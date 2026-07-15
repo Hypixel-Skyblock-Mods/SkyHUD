@@ -26,10 +26,8 @@ object WardrobeController {
         }
         overlay.bind(target)
 
-        client.execute {
-            if (ScreenCompat.currentScreen() === screen) {
-                ScreenCompat.setScreen(overlay)
-            }
+        if (ScreenCompat.currentScreen() === screen) {
+            ScreenCompat.setScreen(overlay)
         }
         return true
     }

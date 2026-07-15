@@ -73,7 +73,6 @@ class EnderChestScreen(
                 target.key
             }
         }
-        scroll = 0.0
     }
 
     fun refreshBackingMenu(menu: AbstractContainerMenu?) {
@@ -94,7 +93,7 @@ class EnderChestScreen(
         val searchWidth = 140
         val search = EditBox(
             font,
-            panelX + panelWidth() - searchWidth - 13,
+            panelX + (panelWidth() - searchWidth) / 2,
             panelY + 6,
             searchWidth,
             12,
@@ -144,7 +143,7 @@ class EnderChestScreen(
         val searchWidth = 140
         SkyHudTheme.outlinedRoundedRect(
             graphics,
-            panelX + panelWidth - searchWidth - 17,
+            panelX + (panelWidth - searchWidth - 8) / 2,
             panelY + 3,
             searchWidth + 8,
             18,

@@ -54,7 +54,6 @@ class SetCollectionScreen(
         totalPages = target.totalPages
         backingMenu = target.menu
         repository.remember(target.page, target.menu)
-        scroll = 0.0
     }
 
     fun refreshBackingMenu(menu: AbstractContainerMenu?) {

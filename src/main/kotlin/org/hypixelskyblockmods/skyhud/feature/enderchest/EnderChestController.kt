@@ -41,11 +41,11 @@ object EnderChestController {
         }
         overlay.bind(target)
 
-        client.execute {
-            if (ScreenCompat.currentScreen() === screen) {
-                ScreenCompat.setScreen(overlay)
-            }
-            commandAfterReplacement?.let { client.player?.connection?.sendCommand(it) }
+        if (ScreenCompat.currentScreen() === screen) {
+            ScreenCompat.setScreen(overlay)
+        }
+        commandAfterReplacement?.let { command ->
+            client.execute { client.player?.connection?.sendCommand(command) }
         }
         return true
     }
