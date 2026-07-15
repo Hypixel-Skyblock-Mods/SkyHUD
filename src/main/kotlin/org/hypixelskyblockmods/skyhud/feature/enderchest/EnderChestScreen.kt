@@ -9,6 +9,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.item.ItemStack
+import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 
 class EnderChestScreen(
@@ -155,6 +156,7 @@ class EnderChestScreen(
             SkyHudTheme.PRIMARY,
         )
         graphics.text(font, "EDIT", editX + 5, panelY + 8, SkyHudTheme.TEXT, false)
+        drawConfigButton(graphics, mouseX, mouseY, headerConfigX(panelX, "STORAGE"), panelY + 4)
 
         val searchWidth = 140
         SkyHudTheme.outlinedRoundedRect(
@@ -500,6 +502,14 @@ class EnderChestScreen(
             editOriginal()
             return true
         }
+        if (
+            click.button() == 0 &&
+            mouseX in headerConfigX(panelX(), "STORAGE") until (headerConfigX(panelX(), "STORAGE") + 16) &&
+            mouseY in (panelY() + 4) until (panelY() + 20)
+        ) {
+            SkyHudConfigManager.open()
+            return true
+        }
 
         if (click.button() == 0 && mouseY in (panelY() + 3) until (panelY() + 3 + toolkitButtonSize)) {
             val farmingX = farmingToolkitX(panelX(), panelWidth(), 140)
@@ -649,6 +659,25 @@ class EnderChestScreen(
 
     private fun headerEditX(panelX: Int, heading: String): Int =
         panelX + 8 + font.width(heading) + 7
+
+    private fun headerConfigX(panelX: Int, heading: String): Int =
+        headerEditX(panelX, heading) + 36
+
+    private fun drawConfigButton(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, x: Int, y: Int) {
+        val hovered = mouseX in x until (x + 16) && mouseY in y until (y + 16)
+        SkyHudTheme.outlinedRoundedRect(
+            graphics,
+            x,
+            y,
+            16,
+            16,
+            if (hovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            SkyHudTheme.PRIMARY,
+        )
+        val icon = "⚙"
+        graphics.text(font, icon, x + (16 - font.width(icon)) / 2, y + 4, SkyHudTheme.TEXT, false)
+        if (hovered) graphics.setTooltipForNextFrame(Component.literal("Open SkyHUD settings"), mouseX, mouseY)
+    }
 
     private fun farmingToolkitX(panelX: Int, panelWidth: Int, searchWidth: Int): Int =
         searchX(panelX, panelWidth, searchWidth) - 4 - toolkitButtonSize - 5

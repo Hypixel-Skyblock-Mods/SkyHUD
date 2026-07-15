@@ -16,6 +16,7 @@ import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
+import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 
 class SetCollectionScreen(
@@ -141,6 +142,7 @@ class SetCollectionScreen(
             SkyHudTheme.PRIMARY,
         )
         graphics.text(font, "EDIT", editX + 5, panelY + 8, SkyHudTheme.TEXT, false)
+        drawConfigButton(graphics, mouseX, mouseY, headerConfigX(panelX), panelY + 4)
 
         val searchWidth = 140
         SkyHudTheme.outlinedRoundedRect(
@@ -418,6 +420,10 @@ class SetCollectionScreen(
             editOriginal()
             return true
         }
+        if (mouseX in headerConfigX(panelX) until (headerConfigX(panelX) + 16) && mouseY in (panelY + 4) until (panelY + 20)) {
+            SkyHudConfigManager.open()
+            return true
+        }
 
         val viewportTop = panelY + headerHeight + 6
         val viewportBottom = panelY + panelHeight() - 7
@@ -498,6 +504,25 @@ class SetCollectionScreen(
 
     private fun headerEditX(panelX: Int): Int =
         panelX + 8 + font.width(heading) + 7
+
+    private fun headerConfigX(panelX: Int): Int =
+        headerEditX(panelX) + 36
+
+    private fun drawConfigButton(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, x: Int, y: Int) {
+        val hovered = mouseX in x until (x + 16) && mouseY in y until (y + 16)
+        SkyHudTheme.outlinedRoundedRect(
+            graphics,
+            x,
+            y,
+            16,
+            16,
+            if (hovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            SkyHudTheme.PRIMARY,
+        )
+        val icon = "⚙"
+        graphics.text(font, icon, x + (16 - font.width(icon)) / 2, y + 4, SkyHudTheme.TEXT, false)
+        if (hovered) graphics.setTooltipForNextFrame(Component.literal("Open SkyHUD settings"), mouseX, mouseY)
+    }
 
     private fun mouseInContentViewport(mouseX: Int, mouseY: Int): Boolean =
         mouseX in (panelX() + 2) until (panelX() + panelWidth() - 2) &&
