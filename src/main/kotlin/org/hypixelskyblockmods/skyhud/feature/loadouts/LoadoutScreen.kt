@@ -258,7 +258,7 @@ class LoadoutScreen(
                 graphics,
                 stack,
                 x + 6,
-                cardY + cardHeight - 86 + index * 22,
+                cardY + cardHeight - 91 + index * 22,
                 mouseX,
                 mouseY,
             )

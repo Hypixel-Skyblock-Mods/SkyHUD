@@ -114,6 +114,7 @@ object LoadoutRepository {
     fun remember(page: Int, menu: ChestMenu) {
         ensureLoaded()
         val previous = pages[page]?.loadouts?.associateBy(CachedLoadout::id).orEmpty()
+        val allRemembered = pages.values.flatMap(CachedLoadoutPage::loadouts)
         val loadouts = LoadoutLayout.iconSlots(page).mapIndexed { position, inventorySlot ->
             val selector = menu.getSlot(inventorySlot).item.copy()
             val id = LoadoutLayout.loadoutId(page, position)
@@ -134,9 +135,10 @@ object LoadoutRepository {
             val observedTunings = menu.loadoutItem(tuningsSlot)
             val observedItems = observedArmor + observedEquipment +
                 listOf(observedPet, observedHotm, observedHotf, observedPowerStone, observedTunings)
-            val previousSelected = previous.values.firstOrNull { it.selected && it.id != id }
-            val transitionalSelection = selected && previousSelected != null &&
-                ProfileItemCache.stacksMatch(observedItems, previousSelected.items) &&
+            val observedFromAnotherLoadout = allRemembered.firstOrNull {
+                it.id != id && !it.empty && ProfileItemCache.stacksMatch(observedItems, it.items)
+            }
+            val transitionalSelection = selected && observedFromAnotherLoadout != null &&
                 (remembered == null || !ProfileItemCache.stacksMatch(observedItems, remembered.items))
             val useObservedDetails = selected && !transitionalSelection
             val armor = when {
