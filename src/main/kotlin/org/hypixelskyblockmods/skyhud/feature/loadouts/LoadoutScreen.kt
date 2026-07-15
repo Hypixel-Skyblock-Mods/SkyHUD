@@ -17,6 +17,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
+import org.hypixelskyblockmods.skyhud.gui.SkyHudControls
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 
 class LoadoutScreen(
@@ -148,8 +149,8 @@ class LoadoutScreen(
             if (editHovered) SkyHudTheme.CONTROL_HOVER else SkyHudTheme.CONTROL,
             SkyHudTheme.PRIMARY,
         )
-        graphics.text(font, "EDIT", editX + 5, panelY + 8, SkyHudTheme.TEXT, false)
-        drawConfigButton(graphics, mouseX, mouseY, headerConfigX(panelX, "LOADOUTS"), panelY + 4)
+        SkyHudControls.centeredText(graphics, font, "EDIT", editX, panelY + 4, 33, 16, SkyHudTheme.TEXT)
+        SkyHudControls.settingsButton(graphics, mouseX, mouseY, headerConfigX(panelX, "LOADOUTS"), panelY + 4)
 
         val searchWidth = 140
         SkyHudTheme.outlinedRoundedRect(
@@ -593,22 +594,6 @@ class LoadoutScreen(
 
     private fun headerConfigX(panelX: Int, heading: String): Int =
         headerEditX(panelX, heading) + 36
-
-    private fun drawConfigButton(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, x: Int, y: Int) {
-        val hovered = mouseX in x until (x + 16) && mouseY in y until (y + 16)
-        SkyHudTheme.outlinedRoundedRect(
-            graphics,
-            x,
-            y,
-            16,
-            16,
-            if (hovered) SkyHudTheme.CONTROL_HOVER else SkyHudTheme.CONTROL,
-            SkyHudTheme.PRIMARY,
-        )
-        val icon = "⚙"
-        graphics.text(font, icon, x + (16 - font.width(icon)) / 2, y + 4, SkyHudTheme.TEXT, false)
-        if (hovered) graphics.setTooltipForNextFrame(Component.literal("Open SkyHUD settings"), mouseX, mouseY)
-    }
 
     private fun mouseInContentViewport(mouseX: Int, mouseY: Int): Boolean =
         mouseX in (panelX() + 2) until (panelX() + panelWidth() - 2) &&
