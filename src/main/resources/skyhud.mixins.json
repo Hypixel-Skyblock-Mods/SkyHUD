@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "org.hypixelskyblockmods.skyhud.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "ScreenRedirectMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

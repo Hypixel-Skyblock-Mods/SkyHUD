@@ -17,6 +17,11 @@ object EquipmentController {
     private var showOriginalNext = false
     private var originalMenu: ChestMenu? = null
 
+    fun redirectIncoming(client: Minecraft, screen: Screen): Screen {
+        if (screen === activeScreen) return screen
+        return if (onScreenOpened(client, screen)) activeScreen ?: screen else screen
+    }
+
     fun onScreenOpened(client: Minecraft, screen: Screen): Boolean {
         if (!SkyHudConfigManager.config.huds.equipment.enabled) return false
         val target = EquipmentDetector.detect(screen) ?: return false
