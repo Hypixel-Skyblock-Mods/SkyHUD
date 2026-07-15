@@ -7,18 +7,31 @@ import org.hypixelskyblockmods.skyhud.util.VanillaItemIds
 
 data class CachedLoadout(
     val id: Int,
+    val page: Int,
     val inventorySlot: Int,
     val name: String,
     val selector: ItemStack,
     val armor: List<ItemStack>,
     val equipment: List<ItemStack>,
     val pet: ItemStack,
+    val hotm: ItemStack,
+    val hotf: ItemStack,
+    val powerStone: ItemStack,
+    val tunings: ItemStack,
     val selected: Boolean,
     val locked: Boolean,
+    val empty: Boolean,
 ) {
     val items: List<ItemStack>
-        get() = armor + equipment + pet
+        get() = armor + equipment + listOf(pet, hotm, hotf, powerStone, tunings)
 }
+
+data class LoadoutCard(
+    val id: Int,
+    val page: Int,
+    val inventorySlot: Int,
+    val loadout: CachedLoadout?,
+)
 
 data class CachedLoadoutPage(
     val page: Int,
@@ -49,6 +62,10 @@ object LoadoutRepository {
     private val armorSlots = listOf(11, 20, 29, 38)
     private val equipmentSlots = listOf(10, 19, 28, 37)
     private const val petSlot = 21
+    private const val hotfSlot = 9
+    private const val hotmSlot = 18
+    private const val powerStoneSlot = 27
+    private const val tuningsSlot = 36
 
     fun remember(page: Int, menu: ChestMenu) {
         val previous = pages[page]?.loadouts?.associateBy(CachedLoadout::id).orEmpty()
@@ -69,23 +86,47 @@ object LoadoutRepository {
                 remembered?.equipment.orEmpty()
             }
             val pet = if (selected) menu.loadoutItem(petSlot) else remembered?.pet ?: ItemStack.EMPTY
+            val hotf = if (selected) menu.loadoutItem(hotfSlot) else remembered?.hotf ?: ItemStack.EMPTY
+            val hotm = if (selected) menu.loadoutItem(hotmSlot) else remembered?.hotm ?: ItemStack.EMPTY
+            val powerStone = if (selected) {
+                menu.loadoutItem(powerStoneSlot)
+            } else {
+                remembered?.powerStone ?: ItemStack.EMPTY
+            }
+            val tunings = if (selected) menu.loadoutItem(tuningsSlot) else remembered?.tunings ?: ItemStack.EMPTY
 
             CachedLoadout(
                 id = id,
+                page = page,
                 inventorySlot = inventorySlot,
                 name = selector.hoverName.string.ifBlank { "Loadout $id" },
                 selector = selector,
                 armor = armor,
                 equipment = equipment,
                 pet = pet,
+                hotm = hotm,
+                hotf = hotf,
+                powerStone = powerStone,
+                tunings = tunings,
                 selected = selected,
                 locked = locked,
+                empty = unused,
             )
         }
         pages[page] = CachedLoadoutPage(page, loadouts)
     }
 
     fun page(page: Int): CachedLoadoutPage? = pages[page]
+
+    fun allLoadouts(totalPages: Int): List<LoadoutCard> = buildList {
+        (1..totalPages).forEach { page ->
+            val cachedById = pages[page]?.loadouts?.associateBy(CachedLoadout::id).orEmpty()
+            LoadoutLayout.iconSlots(page).forEachIndexed { position, inventorySlot ->
+                val id = LoadoutLayout.loadoutId(page, position)
+                add(LoadoutCard(id, page, inventorySlot, cachedById[id]))
+            }
+        }
+    }
 
     private fun ChestMenu.loadoutItem(slot: Int): ItemStack =
         getSlot(slot).item
