@@ -18,12 +18,29 @@ inventory menus with clean, modern interfaces.
 
 ### Wardrobe
 
-- Presents all nine outfits on the current Wardrobe page as responsive cards.
-- Shows each outfit's four armor pieces together.
-- Provides clear active, ready, and unavailable states.
+- Replaces the current `(n/n) Armor Sets` menu while retaining compatibility
+  with the legacy Wardrobe title.
+- Presents three large outfits per row with each title above its four armor
+  slots.
+- Outlines only the equipped outfit and leaves inactive sets unframed.
 - Supports armor-name search, equip/unequip, and validated page navigation.
 
-Both interfaces use SkyHUD's dark palette: `#0D0D0D` backgrounds with
+### Loadouts
+
+- Replaces Hypixel's new `(n/n) Loadouts` pages with three loadouts per row.
+- Displays each loadout name above a nine-slot armor, equipment, and pet strip.
+- Remembers details after a loadout has been selected and outlines only the
+  equipped loadout.
+- Supports loadout and item search, locked slots, and validated page navigation.
+
+### Equipment Sets
+
+- Replaces the Equipment Sets menu opened by `/eq`.
+- Presents three large sets per row with four equipment slots per set.
+- Uses the same selected-only outline, search, and page controls as Wardrobe.
+- Sends equip and unequip actions through the original server inventory slots.
+
+All interfaces use SkyHUD's dark palette: `#0D0D0D` backgrounds with
 `#1E3A69` accents. Detection is limited to verified Hypixel screen titles,
 container layouts, and action items; unrelated chests are left untouched.
 
@@ -38,8 +55,8 @@ JAR.
 
 ## Settings
 
-Run `/skyhud` or use Mod Menu's Config button. Ender Chest and Wardrobe
-replacements can be enabled independently, and settings are stored in
+Run `/skyhud` or use Mod Menu's Config button. Ender Chest, Loadouts, Wardrobe,
+and Equipment Sets can be enabled independently, and settings are stored in
 `config/skyhud.json`.
 
 ## Building
