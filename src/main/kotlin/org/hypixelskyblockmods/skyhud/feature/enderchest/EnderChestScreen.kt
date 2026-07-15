@@ -14,6 +14,7 @@ import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 
 class EnderChestScreen(
     private val editOriginal: () -> Unit,
+    private val beginMenuTransition: () -> Unit,
     private val closed: () -> Unit,
 ) : Screen(Component.literal("SkyHUD Storage")) {
     private data class PageBounds(
@@ -113,6 +114,15 @@ class EnderChestScreen(
             scroll = 0.0
         }
         addRenderableWidget(search)
+    }
+
+    override fun extractBackground(
+        graphics: GuiGraphicsExtractor,
+        mouseX: Int,
+        mouseY: Int,
+        delta: Float,
+    ) {
+        if (!SkyHudTheme.transparent) super.extractBackground(graphics, mouseX, mouseY, delta)
     }
 
     override fun extractRenderState(
@@ -516,11 +526,13 @@ class EnderChestScreen(
             val huntingX = farmingX - toolkitButtonSize - toolkitButtonGap
             when {
                 mouseX in huntingX until (huntingX + toolkitButtonSize) -> {
+                    beginMenuTransition()
                     minecraft.player?.connection?.sendCommand("huntingtoolkit")
                     return true
                 }
 
                 mouseX in farmingX until (farmingX + toolkitButtonSize) -> {
+                    beginMenuTransition()
                     minecraft.player?.connection?.sendCommand("farmingtoolkit")
                     return true
                 }
@@ -596,6 +608,7 @@ class EnderChestScreen(
     }
 
     private fun navigateToPage(key: StoragePageKey) {
+        beginMenuTransition()
         minecraft.player?.connection?.sendCommand(key.navigationCommand)
     }
 

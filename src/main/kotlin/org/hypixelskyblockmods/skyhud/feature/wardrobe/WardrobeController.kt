@@ -6,6 +6,7 @@ import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.feature.sets.SetCollectionScreen
+import org.hypixelskyblockmods.skyhud.gui.OverlayTransitionGuard
 import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
 
 object WardrobeController {
@@ -75,6 +76,7 @@ object WardrobeController {
     }
 
     private fun onOverlayClosed() {
+        OverlayTransitionGuard.clear(activeScreen)
         activeScreen = null
         currentTarget = null
         pendingAction = null
@@ -94,16 +96,19 @@ object WardrobeController {
         if (target.page == action.page) {
             pendingAction = null
             action.index?.let { index ->
+                OverlayTransitionGuard.arm(activeScreen)
                 client.gameMode?.handleContainerInput(target.menu.containerId, 36 + index, 0, ContainerInput.PICKUP, player)
             }
             return
         }
         val navigationSlot = if (action.page > target.page) 53 else 45
+        OverlayTransitionGuard.arm(activeScreen)
         client.gameMode?.handleContainerInput(target.menu.containerId, navigationSlot, 0, ContainerInput.PICKUP, player)
     }
 
     private fun openOriginal() {
         showOriginalNext = true
+        OverlayTransitionGuard.arm(activeScreen)
         Minecraft.getInstance().player?.connection?.sendCommand("wardrobe")
     }
 }

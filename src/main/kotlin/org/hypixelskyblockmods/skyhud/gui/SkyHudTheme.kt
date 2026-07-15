@@ -4,7 +4,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 
 object SkyHudTheme {
-    private val transparent: Boolean
+    val transparent: Boolean
         get() = SkyHudConfigManager.config.theme.preset == 1
 
     val SCREEN_DIM: Int

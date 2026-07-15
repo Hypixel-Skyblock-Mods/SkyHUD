@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.world.inventory.ChestMenu
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
+import org.hypixelskyblockmods.skyhud.gui.OverlayTransitionGuard
 import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
 
 object EnderChestController {
@@ -52,7 +53,7 @@ object EnderChestController {
             }
         }
 
-        val overlay = activeScreen ?: EnderChestScreen(::openOriginal, ::onOverlayClosed).also {
+        val overlay = activeScreen ?: EnderChestScreen(::openOriginal, ::beginMenuTransition, ::onOverlayClosed).also {
             activeScreen = it
         }
         overlay.bind(target)
@@ -61,7 +62,10 @@ object EnderChestController {
             ScreenCompat.setScreen(overlay)
         }
         commandAfterReplacement?.let { command ->
-            client.execute { client.player?.connection?.sendCommand(command) }
+            client.execute {
+                beginMenuTransition()
+                client.player?.connection?.sendCommand(command)
+            }
         }
         return true
     }
@@ -83,13 +87,19 @@ object EnderChestController {
     }
 
     private fun onOverlayClosed() {
+        OverlayTransitionGuard.clear(activeScreen)
         activeScreen = null
+    }
+
+    private fun beginMenuTransition() {
+        OverlayTransitionGuard.arm(activeScreen)
     }
 
     private fun openOriginal() {
         pendingOverviewReturn = null
         overviewRequestInFlight = false
         showOriginalNext = true
+        beginMenuTransition()
         Minecraft.getInstance().player?.connection?.sendCommand("storage")
     }
 }

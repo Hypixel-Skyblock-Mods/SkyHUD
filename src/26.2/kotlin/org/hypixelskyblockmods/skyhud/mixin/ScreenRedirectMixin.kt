@@ -14,6 +14,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
 abstract class ScreenRedirectMixin {
     @Inject(method = ["setScreen"], at = [At("HEAD")], cancellable = true)
     private fun skyhudRedirectScreen(screen: Screen?, callback: CallbackInfo) {
+        if (screen == null && OverlayScreenRouter.retainCurrentScreenOnClose()) {
+            callback.cancel()
+            return
+        }
         val incoming = screen ?: return
         val redirected = OverlayScreenRouter.redirect(Minecraft.getInstance(), incoming)
         if (redirected === incoming) return

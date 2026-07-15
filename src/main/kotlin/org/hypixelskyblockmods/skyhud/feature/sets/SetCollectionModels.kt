@@ -112,7 +112,7 @@ class SetCollectionRepository(
     }
 
     private fun ensureLoaded() {
-        val profile = ProfileItemCache.currentProfile() ?: return
+        val profile = ProfileItemCache.currentProfile()
         if (loadedProfile == profile) return
         loadedProfile = profile
         pages.clear()
@@ -143,7 +143,7 @@ class SetCollectionRepository(
     }
 
     private fun save() {
-        val profile = loadedProfile ?: ProfileItemCache.currentProfile() ?: return
+        val profile = loadedProfile ?: ProfileItemCache.currentProfile()
         val saved = SavedSetCache(
             pages.values.flatMap(CachedSetPage::slots).map { set ->
                 SavedSet(
@@ -160,8 +160,7 @@ class SetCollectionRepository(
         )
         val json = gson.toJson(saved)
         if (json == lastSavedJson) return
-        lastSavedJson = json
-        ProfileItemCache.write(cacheName, profile, json)
+        if (ProfileItemCache.write(cacheName, profile, json)) lastSavedJson = json
     }
 
     private fun pageMatches(previous: CachedSetPage?, current: CachedSetPage): Boolean {

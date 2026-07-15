@@ -5,6 +5,7 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
+import org.hypixelskyblockmods.skyhud.gui.OverlayTransitionGuard
 import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
 
 object LoadoutController {
@@ -64,6 +65,7 @@ object LoadoutController {
     }
 
     private fun onOverlayClosed() {
+        OverlayTransitionGuard.clear(activeScreen)
         activeScreen = null
         currentTarget = null
         pendingAction = null
@@ -84,6 +86,7 @@ object LoadoutController {
         if (target.page == action.page) {
             pendingAction = null
             action.inventorySlot?.let { slot ->
+                OverlayTransitionGuard.arm(activeScreen)
                 client.gameMode?.handleContainerInput(
                     target.menu.containerId,
                     slot,
@@ -96,6 +99,7 @@ object LoadoutController {
         }
 
         val navigationSlot = if (action.page > target.page) 53 else 45
+        OverlayTransitionGuard.arm(activeScreen)
         client.gameMode?.handleContainerInput(
             target.menu.containerId,
             navigationSlot,
@@ -107,6 +111,7 @@ object LoadoutController {
 
     private fun openOriginal() {
         showOriginalNext = true
+        OverlayTransitionGuard.arm(activeScreen)
         Minecraft.getInstance().player?.connection?.sendCommand("loadouts")
     }
 }

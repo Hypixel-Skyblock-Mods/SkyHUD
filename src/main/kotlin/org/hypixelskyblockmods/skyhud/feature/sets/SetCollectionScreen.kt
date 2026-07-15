@@ -13,7 +13,6 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.player.PlayerSkin
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.ChestMenu
-import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
@@ -92,6 +91,15 @@ class SetCollectionScreen(
             scroll = 0.0
         }
         addRenderableWidget(search)
+    }
+
+    override fun extractBackground(
+        graphics: GuiGraphicsExtractor,
+        mouseX: Int,
+        mouseY: Int,
+        delta: Float,
+    ) {
+        if (!SkyHudTheme.transparent) super.extractBackground(graphics, mouseX, mouseY, delta)
     }
 
     override fun extractRenderState(
@@ -443,7 +451,7 @@ class SetCollectionScreen(
         if (set == null) {
             requestAction(bounds.card.page, null)
         } else if (set.selectable) {
-            if (set.page == currentPage) clickBackingSlot(36 + set.index) else requestAction(set.page, set.index)
+            requestAction(set.page, set.index)
         }
         return true
     }
@@ -466,13 +474,6 @@ class SetCollectionScreen(
 
     private fun updateScrollFromMouse(mouseY: Int, top: Int, bottom: Int) {
         scroll = (((mouseY - top).toDouble() / (bottom - top)).coerceIn(0.0, 1.0) * maxScroll)
-    }
-
-    private fun clickBackingSlot(slot: Int) {
-        val menu = backingMenu ?: return
-        val player = minecraft.player ?: return
-        if (player.containerMenu !== menu || slot !in 0 until 54) return
-        minecraft.gameMode?.handleContainerInput(menu.containerId, slot, 0, ContainerInput.PICKUP, player)
     }
 
     private fun setMatchesSearch(card: SetCard): Boolean {

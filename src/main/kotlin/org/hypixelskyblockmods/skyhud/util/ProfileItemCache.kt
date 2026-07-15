@@ -23,17 +23,23 @@ object ProfileItemCache {
     private val cacheRoot = FabricLoader.getInstance().configDir.resolve("skyhud-cache")
     private const val maxItemBytes = 1_000_000L
 
-    fun currentProfile(): UUID? = Minecraft.getInstance().player?.uuid
+    fun currentProfile(): UUID = Minecraft.getInstance().user.profileId
 
     fun read(name: String, profile: UUID): String? = runCatching {
-        val file = cacheRoot.resolve(profile.toString()).resolve("$name.json")
-        if (Files.isRegularFile(file)) Files.readString(file) else null
+        val accountFile = cacheFile(name, profile)
+        if (Files.isRegularFile(accountFile)) return@runCatching Files.readString(accountFile)
+
+        val legacyProfile = Minecraft.getInstance().player?.uuid
+            ?.takeUnless { it == profile }
+            ?: return@runCatching null
+        val legacyFile = cacheFile(name, legacyProfile)
+        if (Files.isRegularFile(legacyFile)) Files.readString(legacyFile) else null
     }.getOrElse {
         logger.warn("Could not read $name cache for $profile", it)
         null
     }
 
-    fun write(name: String, profile: UUID, contents: String) {
+    fun write(name: String, profile: UUID, contents: String): Boolean =
         runCatching {
             val directory = cacheRoot.resolve(profile.toString())
             Files.createDirectories(directory)
@@ -50,10 +56,11 @@ object ProfileItemCache {
             }.getOrElse {
                 Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING)
             }
-        }.onFailure {
+            true
+        }.getOrElse {
             logger.warn("Could not write $name cache for $profile", it)
+            false
         }
-    }
 
     fun encode(stack: ItemStack): String = runCatching {
         if (stack.isEmpty) return ""
@@ -88,6 +95,9 @@ object ProfileItemCache {
 
     fun stacksMatch(first: List<ItemStack>, second: List<ItemStack>): Boolean =
         first.size == second.size && first.indices.all { ItemStack.matches(first[it], second[it]) }
+
+    private fun cacheFile(name: String, profile: UUID) =
+        cacheRoot.resolve(profile.toString()).resolve("$name.json")
 
     private fun registryOps(): RegistryOps<Tag> {
         val registries = Minecraft.getInstance().connection?.registryAccess() ?: RegistryAccess.EMPTY

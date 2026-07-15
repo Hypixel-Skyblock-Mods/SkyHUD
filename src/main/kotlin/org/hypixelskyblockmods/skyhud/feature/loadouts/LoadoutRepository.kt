@@ -214,7 +214,7 @@ object LoadoutRepository {
     }
 
     private fun ensureLoaded() {
-        val profile = ProfileItemCache.currentProfile() ?: return
+        val profile = ProfileItemCache.currentProfile()
         if (loadedProfile == profile) return
         loadedProfile = profile
         pages.clear()
@@ -256,7 +256,7 @@ object LoadoutRepository {
     }
 
     private fun save() {
-        val profile = loadedProfile ?: ProfileItemCache.currentProfile() ?: return
+        val profile = loadedProfile ?: ProfileItemCache.currentProfile()
         val saved = SavedLoadoutCache(
             pages.values.flatMap(CachedLoadoutPage::loadouts).map { loadout ->
                 SavedLoadout(
@@ -282,8 +282,7 @@ object LoadoutRepository {
         )
         val json = gson.toJson(saved)
         if (json == lastSavedJson) return
-        lastSavedJson = json
-        ProfileItemCache.write("loadouts", profile, json)
+        if (ProfileItemCache.write("loadouts", profile, json)) lastSavedJson = json
     }
 
     private fun pageMatches(previous: CachedLoadoutPage?, current: CachedLoadoutPage): Boolean {

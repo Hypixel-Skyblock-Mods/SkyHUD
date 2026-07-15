@@ -157,7 +157,7 @@ object EnderChestRepository {
     }
 
     private fun ensureLoaded() {
-        val profile = ProfileItemCache.currentProfile() ?: return
+        val profile = ProfileItemCache.currentProfile()
         if (loadedProfile == profile) return
         loadedProfile = profile
         pages.clear()
@@ -180,7 +180,7 @@ object EnderChestRepository {
     }
 
     private fun save() {
-        val profile = loadedProfile ?: ProfileItemCache.currentProfile() ?: return
+        val profile = loadedProfile ?: ProfileItemCache.currentProfile()
         val saved = SavedStorage(
             overviewDiscovered = hasDiscoveredOverview,
             available = availablePages.map(::encodeKey).toMutableList(),
@@ -195,8 +195,7 @@ object EnderChestRepository {
         )
         val json = gson.toJson(saved)
         if (json == lastSavedJson) return
-        lastSavedJson = json
-        ProfileItemCache.write("storage", profile, json)
+        if (ProfileItemCache.write("storage", profile, json)) lastSavedJson = json
     }
 
     private fun encodeKey(key: StoragePageKey): String = "${key.type.name}:${key.number}"

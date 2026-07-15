@@ -13,7 +13,6 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.player.PlayerSkin
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.ChestMenu
-import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
@@ -90,6 +89,15 @@ class LoadoutScreen(
             scroll = 0.0
         }
         addRenderableWidget(search)
+    }
+
+    override fun extractBackground(
+        graphics: GuiGraphicsExtractor,
+        mouseX: Int,
+        mouseY: Int,
+        delta: Float,
+    ) {
+        if (!SkyHudTheme.transparent) super.extractBackground(graphics, mouseX, mouseY, delta)
     }
 
     override fun extractRenderState(
@@ -520,11 +528,7 @@ class LoadoutScreen(
     }
 
     private fun performAction(loadout: CachedLoadout, action: LoadoutClickAction) {
-        if (loadout.page == currentPage) {
-            clickBackingSlot(loadout.inventorySlot, action)
-        } else {
-            requestAction(loadout.page, loadout.inventorySlot, action)
-        }
+        requestAction(loadout.page, loadout.inventorySlot, action)
     }
 
     override fun mouseDragged(click: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
@@ -545,13 +549,6 @@ class LoadoutScreen(
 
     private fun updateScrollFromMouse(mouseY: Int, top: Int, bottom: Int) {
         scroll = (((mouseY - top).toDouble() / (bottom - top)).coerceIn(0.0, 1.0) * maxScroll)
-    }
-
-    private fun clickBackingSlot(slot: Int, action: LoadoutClickAction) {
-        val menu = backingMenu ?: return
-        val player = minecraft.player ?: return
-        if (player.containerMenu !== menu || slot !in 0 until 54) return
-        minecraft.gameMode?.handleContainerInput(menu.containerId, slot, action.button, action.input, player)
     }
 
     private fun loadoutMatchesSearch(card: LoadoutCard): Boolean {
