@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, wicked-game-01, skyhud]
     environment: release
     env:
       MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}

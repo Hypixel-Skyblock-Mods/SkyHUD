@@ -55,6 +55,10 @@ code under `src/26.1.2` and `src/26.2`.
   publish anything in GitHub Actions.
 - The `release` GitHub environment provides `MODRINTH_TOKEN` as a secret and
   `MODRINTH_PROJECT_ID` as a variable. Never commit either credential.
+- The release job runs on the repository-scoped self-hosted pool labeled
+  `self-hosted`, `Linux`, `X64`, `wicked-game-01`, and `skyhud`. The pool uses
+  two ephemeral runner containers in the existing `/srv/runners` stack; keep
+  all five labels on the job so it cannot land on an unrelated host runner.
 - The workflow generates its target list with `./gradlew releaseManifest`,
   builds all targets, skips Modrinth versions that already exist, publishes each
   missing target, and creates or updates one GitHub Release with all production
