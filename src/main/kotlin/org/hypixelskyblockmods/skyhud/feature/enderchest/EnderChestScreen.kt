@@ -130,14 +130,14 @@ class EnderChestScreen(
         val inventoryPanelX = inventoryPanelX()
         val inventoryPanelWidth = inventoryPanelWidth()
 
-        graphics.fill(0, 0, width, height, 0x70000000)
+        graphics.fill(0, 0, width, height, SkyHudTheme.SCREEN_DIM)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
             panelX,
             panelY,
             panelWidth,
             storagePanelHeight,
-            0xF20D0D0D.toInt(),
+            SkyHudTheme.PANEL,
             SkyHudTheme.PRIMARY,
         )
         graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.PRIMARY)
@@ -174,7 +174,7 @@ class EnderChestScreen(
             inventoryTop,
             inventoryPanelWidth,
             inventoryHeight,
-            0xF20D0D0D.toInt(),
+            SkyHudTheme.PANEL,
             SkyHudTheme.PRIMARY,
         )
 
@@ -456,7 +456,7 @@ class EnderChestScreen(
         val thumbHeight = (trackHeight * (trackHeight / (trackHeight + maxScroll))).toInt().coerceAtLeast(24)
         val thumbTravel = trackHeight - thumbHeight
         val thumbY = top + ((scroll / maxScroll) * thumbTravel).toInt()
-        SkyHudTheme.roundedRect(graphics, x, top, 3, trackHeight, 0xFF202020.toInt())
+        SkyHudTheme.roundedRect(graphics, x, top, 3, trackHeight, SkyHudTheme.SCROLLBAR_TRACK)
         SkyHudTheme.roundedRect(
             graphics,
             x,

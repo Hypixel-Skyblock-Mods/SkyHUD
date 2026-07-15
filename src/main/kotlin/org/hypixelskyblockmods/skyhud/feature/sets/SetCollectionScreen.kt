@@ -103,14 +103,14 @@ class SetCollectionScreen(
         val panelY = panelY()
         val panelWidth = panelWidth()
         val panelHeight = panelHeight()
-        graphics.fill(0, 0, width, height, 0x70000000)
+        graphics.fill(0, 0, width, height, SkyHudTheme.SCREEN_DIM)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
             panelX,
             panelY,
             panelWidth,
             panelHeight,
-            0xF20D0D0D.toInt(),
+            SkyHudTheme.PANEL,
             SkyHudTheme.PRIMARY,
         )
         graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.PRIMARY)
@@ -215,7 +215,7 @@ class SetCollectionScreen(
             width,
             cardHeight,
             when {
-                set == null || empty || locked -> 0xFF101010.toInt()
+                set == null || empty || locked -> SkyHudTheme.EMPTY_SURFACE
                 hovered -> SkyHudTheme.SURFACE_RAISED
                 else -> SkyHudTheme.SURFACE
             },
@@ -359,7 +359,7 @@ class SetCollectionScreen(
         val thumbHeight = (trackHeight * (trackHeight / (trackHeight + maxScroll))).toInt().coerceAtLeast(24)
         val thumbTravel = trackHeight - thumbHeight
         val thumbY = top + ((scroll / maxScroll) * thumbTravel).toInt()
-        SkyHudTheme.roundedRect(graphics, x, top, 3, trackHeight, 0xFF202020.toInt())
+        SkyHudTheme.roundedRect(graphics, x, top, 3, trackHeight, SkyHudTheme.SCROLLBAR_TRACK)
         SkyHudTheme.roundedRect(
             graphics,
             x,
