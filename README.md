@@ -74,7 +74,8 @@ JAR.
 
 Run `/skyhud` or use Mod Menu's Config button. Ender Chest, Loadouts, Wardrobe,
 and Equipment Sets can be enabled independently, and settings are stored in
-`config/skyhud.json`.
+`config/skyhud.json`. The Dashboard opens by default and shows the installed
+SkyHUD version plus whether a newer stable GitHub release is available.
 
 ## Building
 

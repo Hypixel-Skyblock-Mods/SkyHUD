@@ -6,13 +6,23 @@ import io.github.notenoughupdates.moulconfig.Config
 import io.github.notenoughupdates.moulconfig.annotations.Accordion
 import io.github.notenoughupdates.moulconfig.annotations.Category
 import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorBoolean
+import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorButton
 import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorColour
 import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorDropdown
 import io.github.notenoughupdates.moulconfig.annotations.ConfigOption
 import io.github.notenoughupdates.moulconfig.common.IMinecraft
 import io.github.notenoughupdates.moulconfig.common.text.StructuredText
+import org.hypixelskyblockmods.skyhud.update.SkyHudUpdateChecker
 
 class SkyHudConfig : Config() {
+    @field:Category(
+        name = "Dashboard",
+        desc = "SkyHUD version and update status.",
+    )
+    @field:Expose
+    @JvmField
+    var dashboard = DashboardConfig()
+
     @field:Category(
         name = "HUDS",
         desc = "Configure SkyHUD's interface overhauls.",
@@ -31,6 +41,26 @@ class SkyHudConfig : Config() {
 
     override fun getTitle(): StructuredText =
         IMinecraft.INSTANCE.createLiteral("SkyHUD Settings")
+}
+
+class DashboardConfig {
+    @field:ConfigOption(
+        name = "Version",
+        desc = "Shows the installed SkyHUD version and compares it with the latest GitHub release.",
+    )
+    @field:ConfigVersionStatus
+    @JvmField
+    @Transient
+    var versionStatus: String = ""
+
+    @field:ConfigOption(
+        name = "Update Check",
+        desc = "Check GitHub Releases again for a newer stable SkyHUD version.",
+    )
+    @field:ConfigEditorButton(buttonText = "Check again")
+    @JvmField
+    @Transient
+    var checkForUpdates = Runnable { SkyHudUpdateChecker.refresh(force = true) }
 }
 
 class ThemeConfig {

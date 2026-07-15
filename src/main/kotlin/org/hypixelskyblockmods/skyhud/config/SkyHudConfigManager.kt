@@ -8,6 +8,7 @@ import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
+import org.hypixelskyblockmods.skyhud.update.SkyHudUpdateChecker
 
 object SkyHudConfigManager {
     private lateinit var managed: ManagedConfig<SkyHudConfig>
@@ -17,11 +18,15 @@ object SkyHudConfigManager {
 
     fun initialize() {
         val file = FabricLoader.getInstance().configDir.resolve("skyhud.json").toFile()
-        managed = ManagedConfig.create(file, SkyHudConfig::class.java)
+        managed = ManagedConfig.create(file, SkyHudConfig::class.java) {
+            customProcessor<ConfigVersionStatus> { option, _ -> VersionStatusEditor(option) }
+        }
         save()
     }
 
-    fun createScreen(parent: Screen?): Screen = object : MoulConfigScreenComponent(
+    fun createScreen(parent: Screen?): Screen {
+        SkyHudUpdateChecker.refresh()
+        return object : MoulConfigScreenComponent(
             Component.literal("SkyHUD Settings"),
             GuiContext(GuiElementComponent(managed.getEditor())),
             parent,
@@ -31,6 +36,7 @@ object SkyHudConfigManager {
                 super.removed()
             }
         }
+    }
 
     fun save() {
         if (::managed.isInitialized) managed.saveToFile()
