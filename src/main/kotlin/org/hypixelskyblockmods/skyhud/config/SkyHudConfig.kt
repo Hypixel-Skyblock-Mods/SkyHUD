@@ -1,5 +1,6 @@
 package org.hypixelskyblockmods.skyhud.config
 
+import com.google.gson.annotations.Expose
 import io.github.notenoughupdates.moulconfig.Config
 import io.github.notenoughupdates.moulconfig.annotations.Category
 import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorBoolean
@@ -12,6 +13,7 @@ class SkyHudConfig : Config() {
         name = "Ender Chest",
         desc = "Configure SkyHUD's modern Ender Chest overview.",
     )
+    @field:Expose
     @JvmField
     var enderChest = FeatureToggle(
         enabled = true,
@@ -23,6 +25,7 @@ class SkyHudConfig : Config() {
         name = "Wardrobe",
         desc = "Configure SkyHUD's modern Wardrobe interface.",
     )
+    @field:Expose
     @JvmField
     var wardrobe = FeatureToggle(
         enabled = true,
@@ -35,6 +38,7 @@ class SkyHudConfig : Config() {
 }
 
 class FeatureToggle(
+    @field:Expose
     @field:ConfigOption(name = "Enabled", desc = "Enable this SkyHUD interface overhaul.")
     @field:ConfigEditorBoolean
     @JvmField
