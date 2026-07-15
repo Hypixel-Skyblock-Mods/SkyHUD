@@ -10,10 +10,15 @@ data class CachedLoadout(
     val inventorySlot: Int,
     val name: String,
     val selector: ItemStack,
-    val items: List<ItemStack>,
+    val armor: List<ItemStack>,
+    val equipment: List<ItemStack>,
+    val pet: ItemStack,
     val selected: Boolean,
     val locked: Boolean,
-)
+) {
+    val items: List<ItemStack>
+        get() = armor + equipment + pet
+}
 
 data class CachedLoadoutPage(
     val page: Int,
@@ -41,7 +46,9 @@ object LoadoutLayout {
 
 object LoadoutRepository {
     private val pages = sortedMapOf<Int, CachedLoadoutPage>()
-    private val detailSlots = listOf(11, 20, 29, 38, 10, 19, 28, 37, 21)
+    private val armorSlots = listOf(11, 20, 29, 38)
+    private val equipmentSlots = listOf(10, 19, 28, 37)
+    private const val petSlot = 21
 
     fun remember(page: Int, menu: ChestMenu) {
         val previous = pages[page]?.loadouts?.associateBy(CachedLoadout::id).orEmpty()
@@ -54,24 +61,23 @@ object LoadoutRepository {
                 lore.any { it.contains("You must customize this loadout", ignoreCase = true) }
             val selected = !locked && !unused &&
                 lore.none { it.contains("Left-click to equip!", ignoreCase = true) }
-            val rememberedItems = previous[id]?.items.orEmpty()
-            val items = if (selected) {
-                detailSlots.map { slot ->
-                    menu.getSlot(slot).item
-                        .takeUnless(VanillaItemIds::isGlassPane)
-                        ?.copy()
-                        ?: ItemStack.EMPTY
-                }
+            val remembered = previous[id]
+            val armor = if (selected) armorSlots.map { menu.loadoutItem(it) } else remembered?.armor.orEmpty()
+            val equipment = if (selected) {
+                equipmentSlots.map { menu.loadoutItem(it) }
             } else {
-                rememberedItems
+                remembered?.equipment.orEmpty()
             }
+            val pet = if (selected) menu.loadoutItem(petSlot) else remembered?.pet ?: ItemStack.EMPTY
 
             CachedLoadout(
                 id = id,
                 inventorySlot = inventorySlot,
                 name = selector.hoverName.string.ifBlank { "Loadout $id" },
                 selector = selector,
-                items = items,
+                armor = armor,
+                equipment = equipment,
+                pet = pet,
                 selected = selected,
                 locked = locked,
             )
@@ -80,4 +86,10 @@ object LoadoutRepository {
     }
 
     fun page(page: Int): CachedLoadoutPage? = pages[page]
+
+    private fun ChestMenu.loadoutItem(slot: Int): ItemStack =
+        getSlot(slot).item
+            .takeUnless(VanillaItemIds::isGlassPane)
+            ?.copy()
+            ?: ItemStack.EMPTY
 }
