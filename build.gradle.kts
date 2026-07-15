@@ -1,8 +1,16 @@
 import com.modrinth.minotaur.ModrinthExtension
+import groovy.json.JsonOutput
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.TaskAction
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.gradle.jvm.tasks.Jar
 import org.gradle.language.jvm.tasks.ProcessResources
+import java.util.Properties
 
 plugins {
     kotlin("jvm") version "2.4.0" apply false
@@ -10,14 +18,30 @@ plugins {
     id("com.modrinth.minotaur") version "2.9.0" apply false
 }
 
-val targets = mapOf(
-    "mc26_1_2" to Target("26.1.2", "0.152.1+26.1.2", "modern-26.1", "18.0.0"),
-    "mc26_2" to Target("26.2", "0.154.2+26.2", "modern-26.2", "20.0.1"),
-)
+fun Properties.required(name: String): String =
+    getProperty(name)?.takeIf(String::isNotBlank)
+        ?: error("gradle/targets.properties is missing $name")
+
+val targetProperties = Properties().apply {
+    rootProject.file("gradle/targets.properties").inputStream().use(::load)
+}
+val targetNames = targetProperties.required("targets")
+    .split(',')
+    .map(String::trim)
+    .filter(String::isNotEmpty)
+val targets = targetNames.associateWith { name ->
+    Target(
+        minecraft = targetProperties.required("$name.minecraft"),
+        fabricApi = targetProperties.required("$name.fabric_api"),
+        moulConfig = targetProperties.required("$name.moul_config"),
+        modMenu = targetProperties.required("$name.mod_menu"),
+    )
+}
+val modVersion = providers.gradleProperty("mod_version").get()
 
 allprojects {
     group = "org.hypixelskyblockmods.skyhud"
-    version = "1.0.0"
+    version = modVersion
 
     repositories {
         mavenCentral()
@@ -112,6 +136,52 @@ subprojects {
     tasks.named<Jar>("jar") {
         archiveBaseName.set("SkyHUD")
         archiveVersion.set(project.version.toString())
+    }
+}
+
+val releaseTargets = targets.map { (name, target) ->
+    check(rootProject.file("versions/$name/build.gradle.kts").isFile) {
+        "Missing versions/$name/build.gradle.kts for configured target $name"
+    }
+
+    val artifactVersion = "$modVersion+mc${target.minecraft}"
+    linkedMapOf(
+        "project" to name,
+        "minecraft" to target.minecraft,
+        "artifactVersion" to artifactVersion,
+        "modrinthTask" to ":versions:$name:modrinth",
+        "jar" to "versions/$name/build/libs/SkyHUD-$artifactVersion.jar",
+    )
+}
+val releaseManifestJson = JsonOutput.prettyPrint(
+    JsonOutput.toJson(
+        linkedMapOf(
+            "modVersion" to modVersion,
+            "tag" to "v$modVersion",
+            "targets" to releaseTargets,
+        ),
+    ),
+) + "\n"
+
+tasks.register<ReleaseManifestTask>("releaseManifest") {
+    group = "publishing"
+    description = "Writes metadata for every supported release target."
+    manifestJson.set(releaseManifestJson)
+    outputFile.set(layout.buildDirectory.file("release/manifest.json"))
+}
+
+abstract class ReleaseManifestTask : DefaultTask() {
+    @get:Input
+    abstract val manifestJson: Property<String>
+
+    @get:OutputFile
+    abstract val outputFile: RegularFileProperty
+
+    @TaskAction
+    fun writeManifest() {
+        val output = outputFile.get().asFile
+        output.parentFile.mkdirs()
+        output.writeText(manifestJson.get())
     }
 }
 
