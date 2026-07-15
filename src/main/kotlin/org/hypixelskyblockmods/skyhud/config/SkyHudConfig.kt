@@ -41,7 +41,7 @@ class ThemeConfig {
     )
     @field:ConfigEditorDropdown(values = ["Original", "Transparent"])
     @JvmField
-    var preset: Int = 0
+    var preset: Int = 1
 
     @field:Expose
     @field:ConfigOption(
@@ -50,7 +50,7 @@ class ThemeConfig {
     )
     @field:ConfigEditorColour
     @JvmField
-    var mainColor: ChromaColour = ChromaColour.fromStaticRGB(0x1E, 0x3A, 0x69, 0xFF)
+    var mainColor: ChromaColour = ChromaColour.fromStaticRGB(0x24, 0x31, 0xA0, 0xFF)
 }
 
 class HudConfig {

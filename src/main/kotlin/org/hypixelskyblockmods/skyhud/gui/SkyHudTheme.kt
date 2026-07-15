@@ -25,7 +25,7 @@ object SkyHudTheme {
         get() = runCatching {
             val color = SkyHudConfigManager.config.theme.mainColor.getEffectiveColourRGB() and 0x00FFFFFF
             withAlpha(color, if (transparent) 0xB0 else 0xFF)
-        }.getOrDefault(0xFF1E3A69.toInt())
+        }.getOrDefault(0xFF2431A0.toInt())
     val PRIMARY_HOVER: Int
         get() = brighten(PRIMARY, 1.3f)
     val CONTROL: Int
