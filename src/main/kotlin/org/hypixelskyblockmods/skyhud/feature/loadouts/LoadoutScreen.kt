@@ -121,7 +121,7 @@ class LoadoutScreen(
             SkyHudTheme.PANEL,
             SkyHudTheme.PRIMARY,
         )
-        graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.PRIMARY)
+        graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.DIVIDER)
         drawHeader(graphics, mouseX, mouseY, panelX, panelY, panelWidth)
         drawLoadouts(graphics, mouseX, mouseY, panelX, panelY, panelWidth, panelHeight)
         super.extractRenderState(graphics, mouseX, mouseY, delta)
@@ -145,7 +145,7 @@ class LoadoutScreen(
             panelY + 4,
             33,
             16,
-            if (editHovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            if (editHovered) SkyHudTheme.CONTROL_HOVER else SkyHudTheme.CONTROL,
             SkyHudTheme.PRIMARY,
         )
         graphics.text(font, "EDIT", editX + 5, panelY + 8, SkyHudTheme.TEXT, false)
@@ -244,7 +244,7 @@ class LoadoutScreen(
             clipText(name, width - 2),
             x,
             y + 1,
-            if (loadout == null || empty || locked) SkyHudTheme.TEXT_MUTED else if (nameHovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.TEXT,
+            if (loadout == null || empty || locked) SkyHudTheme.TEXT_MUTED else SkyHudTheme.TEXT,
             false,
         )
         if (nameHovered) graphics.setTooltipForNextFrame(Component.literal("Rename loadout"), mouseX, mouseY)
@@ -312,7 +312,7 @@ class LoadoutScreen(
             buttonY,
             buttonWidth,
             20,
-            if (hovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            if (hovered) SkyHudTheme.CONTROL_HOVER else SkyHudTheme.CONTROL,
             SkyHudTheme.PRIMARY,
         )
         graphics.text(font, label, buttonX + (buttonWidth - font.width(label)) / 2, buttonY + 6, SkyHudTheme.TEXT, false)
@@ -362,8 +362,8 @@ class LoadoutScreen(
             editSize,
             editSize,
             when {
-                hovered -> SkyHudTheme.PRIMARY_HOVER
-                enabled -> SkyHudTheme.PRIMARY
+                hovered -> SkyHudTheme.CONTROL_HOVER
+                enabled -> SkyHudTheme.CONTROL
                 else -> SkyHudTheme.SLOT
             },
         )
@@ -454,7 +454,7 @@ class LoadoutScreen(
             thumbY,
             3,
             thumbHeight,
-            if (mouseX in (x - 3)..(x + 6) && mouseY in thumbY..(thumbY + thumbHeight)) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            if (mouseX in (x - 3)..(x + 6) && mouseY in thumbY..(thumbY + thumbHeight)) SkyHudTheme.SCROLLBAR_THUMB_HOVER else SkyHudTheme.SCROLLBAR_THUMB,
         )
     }
 
@@ -602,7 +602,7 @@ class LoadoutScreen(
             y,
             16,
             16,
-            if (hovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            if (hovered) SkyHudTheme.CONTROL_HOVER else SkyHudTheme.CONTROL,
             SkyHudTheme.PRIMARY,
         )
         val icon = "⚙"

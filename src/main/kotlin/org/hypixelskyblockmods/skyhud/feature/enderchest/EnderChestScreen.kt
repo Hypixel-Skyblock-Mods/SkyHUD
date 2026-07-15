@@ -124,10 +124,10 @@ class EnderChestScreen(
         delta: Float,
     ) {
         val panelY = panelY()
-        val inventoryTop = panelY + panelHeight() - inventoryHeight
+        val inventoryTop = inventoryTop()
         SkyHudBackdrop.renderPanelBlur(
             graphics,
-            SkyHudBackdrop.Region(panelX(), panelY, panelWidth(), inventoryTop - panelY + 4),
+            SkyHudBackdrop.Region(panelX(), panelY, panelWidth(), inventoryTop - panelY),
             SkyHudBackdrop.Region(inventoryPanelX(), inventoryTop, inventoryPanelWidth(), inventoryHeight),
         )
     }
@@ -142,9 +142,8 @@ class EnderChestScreen(
         val panelY = panelY()
         val panelWidth = panelWidth()
         val panelHeight = panelHeight()
-        val panelBottom = panelY + panelHeight
-        val inventoryTop = panelBottom - inventoryHeight
-        val storagePanelHeight = inventoryTop - panelY + 4
+        val inventoryTop = inventoryTop()
+        val storagePanelHeight = inventoryTop - panelY
         val inventoryPanelX = inventoryPanelX()
         val inventoryPanelWidth = inventoryPanelWidth()
 
@@ -158,7 +157,7 @@ class EnderChestScreen(
             SkyHudTheme.PANEL,
             SkyHudTheme.PRIMARY,
         )
-        graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.PRIMARY)
+        graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.DIVIDER)
         val titleX = panelX + 8
         val editX = headerEditX(panelX, "STORAGE")
         val editHovered = mouseX in editX until (editX + 33) && mouseY in (panelY + 4) until (panelY + 20)
@@ -169,7 +168,7 @@ class EnderChestScreen(
             panelY + 4,
             33,
             16,
-            if (editHovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            if (editHovered) SkyHudTheme.CONTROL_HOVER else SkyHudTheme.CONTROL,
             SkyHudTheme.PRIMARY,
         )
         graphics.text(font, "EDIT", editX + 5, panelY + 8, SkyHudTheme.TEXT, false)
@@ -396,7 +395,7 @@ class EnderChestScreen(
                 buttonY,
                 labelWidth,
                 22,
-                if (hovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+                if (hovered) SkyHudTheme.CONTROL_HOVER else SkyHudTheme.CONTROL,
                 SkyHudTheme.PRIMARY,
             )
             graphics.text(font, label, buttonX + 8, buttonY + 7, SkyHudTheme.TEXT, false)
@@ -486,9 +485,9 @@ class EnderChestScreen(
             3,
             thumbHeight,
             if (mouseX in (x - 3)..(x + 6) && mouseY in thumbY..(thumbY + thumbHeight)) {
-                SkyHudTheme.PRIMARY_HOVER
+                SkyHudTheme.SCROLLBAR_THUMB_HOVER
             } else {
-                SkyHudTheme.PRIMARY
+                SkyHudTheme.SCROLLBAR_THUMB
             },
         )
     }
@@ -549,7 +548,7 @@ class EnderChestScreen(
 
         val scrollbarX = panelX() + panelWidth() - 9
         val scrollbarTop = panelY() + headerHeight + 5
-        val scrollbarBottom = panelY() + panelHeight() - inventoryHeight - 5
+        val scrollbarBottom = inventoryTop() - 5
         if (click.button() == 0 && mouseX in (scrollbarX - 4)..(scrollbarX + 7) && mouseY in scrollbarTop..scrollbarBottom) {
             draggingScrollbar = true
             updateScrollFromMouse(mouseY, scrollbarTop, scrollbarBottom)
@@ -595,7 +594,7 @@ class EnderChestScreen(
     override fun mouseDragged(click: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
         if (draggingScrollbar) {
             val top = panelY() + headerHeight + 5
-            val bottom = panelY() + panelHeight() - inventoryHeight - 5
+            val bottom = inventoryTop() - 5
             updateScrollFromMouse(click.y.toInt(), top, bottom)
             return true
         }
@@ -675,6 +674,8 @@ class EnderChestScreen(
 
     private fun panelY(): Int = (height - panelHeight()) / 2
 
+    private fun inventoryTop(): Int = panelY() + panelHeight() - inventoryHeight + 4
+
     private fun searchX(panelX: Int, panelWidth: Int, searchWidth: Int): Int =
         panelX + panelWidth - searchWidth - 11
 
@@ -692,7 +693,7 @@ class EnderChestScreen(
             y,
             16,
             16,
-            if (hovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            if (hovered) SkyHudTheme.CONTROL_HOVER else SkyHudTheme.CONTROL,
             SkyHudTheme.PRIMARY,
         )
         val icon = "⚙"
@@ -705,7 +706,7 @@ class EnderChestScreen(
 
     private fun mouseInPageViewport(mouseX: Int, mouseY: Int): Boolean =
         mouseX in (panelX() + 2) until (panelX() + panelWidth() - 2) &&
-            mouseY in (panelY() + headerHeight + 5) until (panelY() + panelHeight() - inventoryHeight - 5)
+            mouseY in (panelY() + headerHeight + 5) until (inventoryTop() - 5)
 
     private fun inventoryPanelWidth(): Int = 9 * inventorySlotPitch + 20
 

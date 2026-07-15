@@ -123,7 +123,7 @@ class SetCollectionScreen(
             SkyHudTheme.PANEL,
             SkyHudTheme.PRIMARY,
         )
-        graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.PRIMARY)
+        graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.DIVIDER)
         drawHeader(graphics, mouseX, mouseY, panelX, panelY, panelWidth)
         drawSets(graphics, mouseX, mouseY, panelX, panelY, panelWidth, panelHeight)
         super.extractRenderState(graphics, mouseX, mouseY, delta)
@@ -147,7 +147,7 @@ class SetCollectionScreen(
             panelY + 4,
             33,
             16,
-            if (editHovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            if (editHovered) SkyHudTheme.CONTROL_HOVER else SkyHudTheme.CONTROL,
             SkyHudTheme.PRIMARY,
         )
         graphics.text(font, "EDIT", editX + 5, panelY + 8, SkyHudTheme.TEXT, false)
@@ -282,7 +282,7 @@ class SetCollectionScreen(
             buttonY,
             buttonWidth,
             20,
-            if (hovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            if (hovered) SkyHudTheme.CONTROL_HOVER else SkyHudTheme.CONTROL,
             SkyHudTheme.PRIMARY,
         )
         graphics.text(font, label, buttonX + (buttonWidth - font.width(label)) / 2, buttonY + 6, SkyHudTheme.TEXT, false)
@@ -401,7 +401,7 @@ class SetCollectionScreen(
             thumbY,
             3,
             thumbHeight,
-            if (mouseX in (x - 3)..(x + 6) && mouseY in thumbY..(thumbY + thumbHeight)) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            if (mouseX in (x - 3)..(x + 6) && mouseY in thumbY..(thumbY + thumbHeight)) SkyHudTheme.SCROLLBAR_THUMB_HOVER else SkyHudTheme.SCROLLBAR_THUMB,
         )
     }
 
@@ -519,7 +519,7 @@ class SetCollectionScreen(
             y,
             16,
             16,
-            if (hovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            if (hovered) SkyHudTheme.CONTROL_HOVER else SkyHudTheme.CONTROL,
             SkyHudTheme.PRIMARY,
         )
         val icon = "⚙"
