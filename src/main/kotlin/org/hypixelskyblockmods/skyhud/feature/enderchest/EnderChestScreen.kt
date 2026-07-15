@@ -45,7 +45,7 @@ class EnderChestScreen(
     private var inventorySlotBounds = emptyList<InventorySlotBounds>()
     private var draggingScrollbar = false
 
-    private val panelMaxWidth = 590
+    private val panelMaxWidth = 574
     private val panelMaxHeight = 430
     private val headerHeight = 24
     private val inventoryHeight = 132
@@ -60,6 +60,8 @@ class EnderChestScreen(
     private val inventorySlotPitch = 24
     private val toolkitButtonSize = 18
     private val toolkitButtonGap = 3
+    private val contentEdgeGap = 3
+    private val inventorySidePadding = 6
 
     fun bind(target: EnderChestTarget) {
         backingMenu = target.menu
@@ -127,7 +129,7 @@ class EnderChestScreen(
         val inventoryTop = inventoryTop()
         SkyHudBackdrop.renderPanelBlur(
             graphics,
-            SkyHudBackdrop.Region(panelX(), panelY, panelWidth(), inventoryTop - panelY),
+            SkyHudBackdrop.Region(panelX(), panelY, panelWidth(), inventoryTop - panelY + 1),
             SkyHudBackdrop.Region(inventoryPanelX(), inventoryTop, inventoryPanelWidth(), inventoryHeight),
         )
     }
@@ -143,7 +145,7 @@ class EnderChestScreen(
         val panelWidth = panelWidth()
         val panelHeight = panelHeight()
         val inventoryTop = inventoryTop()
-        val storagePanelHeight = inventoryTop - panelY
+        val storagePanelHeight = inventoryTop - panelY + 1
         val inventoryPanelX = inventoryPanelX()
         val inventoryPanelWidth = inventoryPanelWidth()
 
@@ -216,8 +218,8 @@ class EnderChestScreen(
         panelWidth: Int,
         inventoryTop: Int,
     ) {
-        val viewportTop = panelY + headerHeight + 5
-        val viewportBottom = inventoryTop - 5
+        val viewportTop = panelY + headerHeight + contentEdgeGap
+        val viewportBottom = inventoryTop - contentEdgeGap
         val viewportHeight = (viewportBottom - viewportTop).coerceAtLeast(1)
         val pages = EnderChestRepository.allPages().filter(::pageMatchesSearch)
         val pageRows = pages.chunked(pageColumns)
@@ -409,10 +411,10 @@ class EnderChestScreen(
         inventoryPanelX: Int,
         inventoryTop: Int,
     ) {
-        graphics.text(font, "INVENTORY", inventoryPanelX + 10, inventoryTop + 9, SkyHudTheme.TEXT_MUTED, false)
+        graphics.text(font, "INVENTORY", inventoryPanelX + inventorySidePadding, inventoryTop + 9, SkyHudTheme.TEXT_MUTED, false)
 
         val menu = backingMenu ?: return
-        val startX = inventoryPanelX + 10
+        val startX = inventoryPanelX + inventorySidePadding
         val mainY = inventoryTop + 22
         val playerStart = menu.rowCount * 9
         val bounds = ArrayList<InventorySlotBounds>(36)
@@ -547,8 +549,8 @@ class EnderChestScreen(
         }
 
         val scrollbarX = panelX() + panelWidth() - 9
-        val scrollbarTop = panelY() + headerHeight + 5
-        val scrollbarBottom = inventoryTop() - 5
+        val scrollbarTop = panelY() + headerHeight + contentEdgeGap
+        val scrollbarBottom = inventoryTop() - contentEdgeGap
         if (click.button() == 0 && mouseX in (scrollbarX - 4)..(scrollbarX + 7) && mouseY in scrollbarTop..scrollbarBottom) {
             draggingScrollbar = true
             updateScrollFromMouse(mouseY, scrollbarTop, scrollbarBottom)
@@ -593,8 +595,8 @@ class EnderChestScreen(
 
     override fun mouseDragged(click: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
         if (draggingScrollbar) {
-            val top = panelY() + headerHeight + 5
-            val bottom = inventoryTop() - 5
+            val top = panelY() + headerHeight + contentEdgeGap
+            val bottom = inventoryTop() - contentEdgeGap
             updateScrollFromMouse(click.y.toInt(), top, bottom)
             return true
         }
@@ -674,7 +676,7 @@ class EnderChestScreen(
 
     private fun panelY(): Int = (height - panelHeight()) / 2
 
-    private fun inventoryTop(): Int = panelY() + panelHeight() - inventoryHeight + 4
+    private fun inventoryTop(): Int = panelY() + panelHeight() - inventoryHeight + 3
 
     private fun searchX(panelX: Int, panelWidth: Int, searchWidth: Int): Int =
         panelX + panelWidth - searchWidth - 11
@@ -706,9 +708,9 @@ class EnderChestScreen(
 
     private fun mouseInPageViewport(mouseX: Int, mouseY: Int): Boolean =
         mouseX in (panelX() + 2) until (panelX() + panelWidth() - 2) &&
-            mouseY in (panelY() + headerHeight + 5) until (inventoryTop() - 5)
+            mouseY in (panelY() + headerHeight + contentEdgeGap) until (inventoryTop() - contentEdgeGap)
 
-    private fun inventoryPanelWidth(): Int = 9 * inventorySlotPitch + 20
+    private fun inventoryPanelWidth(): Int = 9 * inventorySlotPitch + 2 * inventorySidePadding
 
     private fun inventoryPanelX(): Int = (width - inventoryPanelWidth()) / 2
 

@@ -76,8 +76,15 @@ object SkyHudTheme {
         fill: Int = SURFACE,
         outline: Int = BORDER,
     ) {
-        roundedRect(graphics, x, y, width, height, outline)
-        roundedRect(graphics, x + 1, y + 1, width - 2, height - 2, fill)
+        roundedRect(graphics, x, y, width, height, fill)
+        if (width <= 2 || height <= 2) {
+            roundedRect(graphics, x, y, width, height, outline)
+            return
+        }
+        graphics.fill(x + 1, y, x + width - 1, y + 1, outline)
+        graphics.fill(x, y + 1, x + 1, y + height - 1, outline)
+        graphics.fill(x + width - 1, y + 1, x + width, y + height - 1, outline)
+        graphics.fill(x + 1, y + height - 1, x + width - 1, y + height, outline)
     }
 
     private fun brighten(color: Int, factor: Float): Int = withAlpha(
