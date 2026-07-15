@@ -8,9 +8,9 @@ import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
 object LoadoutController {
     private var activeScreen: LoadoutScreen? = null
 
-    fun onScreenOpened(client: Minecraft, screen: Screen) {
-        if (!SkyHudConfigManager.config.huds.loadouts.enabled) return
-        val target = LoadoutDetector.detect(screen) ?: return
+    fun onScreenOpened(client: Minecraft, screen: Screen): Boolean {
+        if (!SkyHudConfigManager.config.huds.loadouts.enabled) return false
+        val target = LoadoutDetector.detect(screen) ?: return false
         LoadoutRepository.remember(target.page, target.menu)
 
         val overlay = activeScreen ?: LoadoutScreen(::onOverlayClosed).also {
@@ -23,15 +23,16 @@ object LoadoutController {
                 ScreenCompat.setScreen(overlay)
             }
         }
+        return true
     }
 
     fun onClientTick(client: Minecraft) {
         val current = ScreenCompat.currentScreen() ?: return
         var overlay = activeScreen
         if (overlay == null || current !== overlay) {
-            onScreenOpened(client, current)
+            if (!onScreenOpened(client, current)) return
             overlay = activeScreen ?: return
-            if (ScreenCompat.currentScreen() !== overlay) return
+            if (ScreenCompat.currentScreen() !== overlay) ScreenCompat.setScreen(overlay)
         }
         overlay.refreshBackingMenu(client.player?.containerMenu)
     }

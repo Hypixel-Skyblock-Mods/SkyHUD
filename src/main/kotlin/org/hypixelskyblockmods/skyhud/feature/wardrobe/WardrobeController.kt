@@ -9,9 +9,9 @@ import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
 object WardrobeController {
     private var activeScreen: SetCollectionScreen? = null
 
-    fun onScreenOpened(client: Minecraft, screen: Screen) {
-        if (!SkyHudConfigManager.config.huds.wardrobe.enabled) return
-        val target = WardrobeDetector.detect(screen) ?: return
+    fun onScreenOpened(client: Minecraft, screen: Screen): Boolean {
+        if (!SkyHudConfigManager.config.huds.wardrobe.enabled) return false
+        val target = WardrobeDetector.detect(screen) ?: return false
         WardrobeRepository.sets.remember(target.page, target.menu)
 
         val overlay = activeScreen ?: SetCollectionScreen(
@@ -31,15 +31,16 @@ object WardrobeController {
                 ScreenCompat.setScreen(overlay)
             }
         }
+        return true
     }
 
     fun onClientTick(client: Minecraft) {
         val current = ScreenCompat.currentScreen() ?: return
         var overlay = activeScreen
         if (overlay == null || current !== overlay) {
-            onScreenOpened(client, current)
+            if (!onScreenOpened(client, current)) return
             overlay = activeScreen ?: return
-            if (ScreenCompat.currentScreen() !== overlay) return
+            if (ScreenCompat.currentScreen() !== overlay) ScreenCompat.setScreen(overlay)
         }
         overlay.refreshBackingMenu(client.player?.containerMenu)
     }

@@ -8,9 +8,9 @@ import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
 object EnderChestController {
     private var activeScreen: EnderChestScreen? = null
 
-    fun onScreenOpened(client: Minecraft, screen: Screen) {
-        if (!SkyHudConfigManager.config.huds.enderChest.enabled) return
-        val target = EnderChestDetector.detect(screen) ?: return
+    fun onScreenOpened(client: Minecraft, screen: Screen): Boolean {
+        if (!SkyHudConfigManager.config.huds.enderChest.enabled) return false
+        val target = EnderChestDetector.detect(screen) ?: return false
         when (target) {
             is EnderChestTarget.Overview -> EnderChestRepository.rememberOverview(target.menu)
             is EnderChestTarget.Page -> {
@@ -33,15 +33,16 @@ object EnderChestController {
                 ScreenCompat.setScreen(overlay)
             }
         }
+        return true
     }
 
     fun onClientTick(client: Minecraft) {
         val current = ScreenCompat.currentScreen() ?: return
         var overlay = activeScreen
         if (overlay == null || current !== overlay) {
-            onScreenOpened(client, current)
+            if (!onScreenOpened(client, current)) return
             overlay = activeScreen ?: return
-            if (ScreenCompat.currentScreen() !== overlay) return
+            if (ScreenCompat.currentScreen() !== overlay) ScreenCompat.setScreen(overlay)
         }
         overlay.refreshBackingMenu(client.player?.containerMenu)
     }
