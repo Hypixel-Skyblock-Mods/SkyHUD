@@ -1,10 +1,14 @@
 package org.hypixelskyblockmods.skyhud.feature.loadouts
 
+import com.google.gson.GsonBuilder
+import java.util.UUID
 import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.item.ItemStack
 import org.hypixelskyblockmods.skyhud.util.ItemText
+import org.hypixelskyblockmods.skyhud.util.ProfileItemCache
 import org.hypixelskyblockmods.skyhud.util.VanillaItemIds
+import org.slf4j.LoggerFactory
 
 data class CachedLoadout(
     val id: Int,
@@ -70,6 +74,32 @@ object LoadoutLayout {
 }
 
 object LoadoutRepository {
+    private data class SavedLoadout(
+        var id: Int = 1,
+        var page: Int = 1,
+        var inventorySlot: Int = 0,
+        var name: String = "",
+        var selector: String = "",
+        var armor: MutableList<String> = mutableListOf(),
+        var equipment: MutableList<String> = mutableListOf(),
+        var pet: String = "",
+        var hotm: String = "",
+        var hotf: String = "",
+        var powerStone: String = "",
+        var tunings: String = "",
+        var selected: Boolean = false,
+        var locked: Boolean = false,
+        var empty: Boolean = false,
+        var renameButton: Int = 1,
+        var renameInput: String = ContainerInput.PICKUP.name,
+    )
+
+    private data class SavedLoadoutCache(
+        var loadouts: MutableList<SavedLoadout> = mutableListOf(),
+    )
+
+    private val logger = LoggerFactory.getLogger("SkyHUD Loadout Cache")
+    private val gson = GsonBuilder().setPrettyPrinting().create()
     private val pages = sortedMapOf<Int, CachedLoadoutPage>()
     private val armorSlots = listOf(11, 20, 29, 38)
     private val equipmentSlots = listOf(10, 19, 28, 37)
@@ -78,8 +108,11 @@ object LoadoutRepository {
     private const val hotmSlot = 18
     private const val powerStoneSlot = 27
     private const val tuningsSlot = 36
+    private var loadedProfile: UUID? = null
+    private var lastSavedJson: String? = null
 
     fun remember(page: Int, menu: ChestMenu) {
+        ensureLoaded()
         val previous = pages[page]?.loadouts?.associateBy(CachedLoadout::id).orEmpty()
         val loadouts = LoadoutLayout.iconSlots(page).mapIndexed { position, inventorySlot ->
             val selector = menu.getSlot(inventorySlot).item.copy()
@@ -92,30 +125,44 @@ object LoadoutRepository {
                 lore.none { it.contains("Left-click to equip!", ignoreCase = true) }
             val remembered = previous[id]
             val retainRemembered = !locked && !unused
+            val observedArmor = armorSlots.map { menu.loadoutItem(it) }
+            val observedEquipment = equipmentSlots.map { menu.loadoutItem(it) }
+            val observedPet = menu.loadoutItem(petSlot)
+            val observedHotf = menu.loadoutItem(hotfSlot)
+            val observedHotm = menu.loadoutItem(hotmSlot)
+            val observedPowerStone = menu.loadoutItem(powerStoneSlot)
+            val observedTunings = menu.loadoutItem(tuningsSlot)
+            val observedItems = observedArmor + observedEquipment +
+                listOf(observedPet, observedHotm, observedHotf, observedPowerStone, observedTunings)
+            val previousSelected = previous.values.firstOrNull { it.selected && it.id != id }
+            val transitionalSelection = selected && previousSelected != null &&
+                ProfileItemCache.stacksMatch(observedItems, previousSelected.items) &&
+                (remembered == null || !ProfileItemCache.stacksMatch(observedItems, remembered.items))
+            val useObservedDetails = selected && !transitionalSelection
             val armor = when {
-                selected -> armorSlots.map { menu.loadoutItem(it) }
+                useObservedDetails -> observedArmor
                 retainRemembered -> remembered?.armor.orEmpty()
                 else -> List(4) { ItemStack.EMPTY }
             }
-            val equipment = if (selected) {
-                equipmentSlots.map { menu.loadoutItem(it) }
+            val equipment = if (useObservedDetails) {
+                observedEquipment
             } else if (retainRemembered) {
                 remembered?.equipment.orEmpty()
             } else {
                 List(4) { ItemStack.EMPTY }
             }
-            val pet = if (selected) menu.loadoutItem(petSlot) else remembered?.pet.takeIf { retainRemembered } ?: ItemStack.EMPTY
-            val hotf = if (selected) menu.loadoutItem(hotfSlot) else remembered?.hotf.takeIf { retainRemembered } ?: ItemStack.EMPTY
-            val hotm = if (selected) menu.loadoutItem(hotmSlot) else remembered?.hotm.takeIf { retainRemembered } ?: ItemStack.EMPTY
-            val powerStone = if (selected) {
-                menu.loadoutItem(powerStoneSlot)
+            val pet = if (useObservedDetails) observedPet else remembered?.pet.takeIf { retainRemembered } ?: ItemStack.EMPTY
+            val hotf = if (useObservedDetails) observedHotf else remembered?.hotf.takeIf { retainRemembered } ?: ItemStack.EMPTY
+            val hotm = if (useObservedDetails) observedHotm else remembered?.hotm.takeIf { retainRemembered } ?: ItemStack.EMPTY
+            val powerStone = if (useObservedDetails) {
+                observedPowerStone
             } else if (retainRemembered) {
                 remembered?.powerStone ?: ItemStack.EMPTY
             } else {
                 ItemStack.EMPTY
             }
-            val tunings = if (selected) {
-                menu.loadoutItem(tuningsSlot)
+            val tunings = if (useObservedDetails) {
+                observedTunings
             } else if (retainRemembered) {
                 remembered?.tunings ?: ItemStack.EMPTY
             } else {
@@ -141,18 +188,115 @@ object LoadoutRepository {
                 renameAction = renameAction(lore),
             )
         }
-        pages[page] = CachedLoadoutPage(page, loadouts)
+        val cachedPage = CachedLoadoutPage(page, loadouts)
+        if (!pageMatches(pages[page], cachedPage)) {
+            pages[page] = cachedPage
+            save()
+        }
     }
 
-    fun page(page: Int): CachedLoadoutPage? = pages[page]
+    fun page(page: Int): CachedLoadoutPage? {
+        ensureLoaded()
+        return pages[page]
+    }
 
     fun allLoadouts(totalPages: Int): List<LoadoutCard> = buildList {
+        ensureLoaded()
         (1..totalPages).forEach { page ->
             val cachedById = pages[page]?.loadouts?.associateBy(CachedLoadout::id).orEmpty()
             LoadoutLayout.iconSlots(page).forEachIndexed { position, inventorySlot ->
                 val id = LoadoutLayout.loadoutId(page, position)
                 add(LoadoutCard(id, page, inventorySlot, cachedById[id]))
             }
+        }
+    }
+
+    private fun ensureLoaded() {
+        val profile = ProfileItemCache.currentProfile() ?: return
+        if (loadedProfile == profile) return
+        loadedProfile = profile
+        pages.clear()
+        lastSavedJson = ProfileItemCache.read("loadouts", profile)
+        val json = lastSavedJson ?: return
+        runCatching {
+            val saved = gson.fromJson(json, SavedLoadoutCache::class.java)
+            saved.loadouts.groupBy(SavedLoadout::page).forEach { (page, loadouts) ->
+                pages[page] = CachedLoadoutPage(
+                    page,
+                    loadouts.sortedBy(SavedLoadout::id).map { loadout ->
+                        CachedLoadout(
+                            id = loadout.id,
+                            page = loadout.page,
+                            inventorySlot = loadout.inventorySlot,
+                            name = loadout.name,
+                            selector = ProfileItemCache.decode(loadout.selector),
+                            armor = loadout.armor.map(ProfileItemCache::decode),
+                            equipment = loadout.equipment.map(ProfileItemCache::decode),
+                            pet = ProfileItemCache.decode(loadout.pet),
+                            hotm = ProfileItemCache.decode(loadout.hotm),
+                            hotf = ProfileItemCache.decode(loadout.hotf),
+                            powerStone = ProfileItemCache.decode(loadout.powerStone),
+                            tunings = ProfileItemCache.decode(loadout.tunings),
+                            selected = loadout.selected,
+                            locked = loadout.locked,
+                            empty = loadout.empty,
+                            renameAction = LoadoutClickAction(
+                                loadout.renameButton,
+                                runCatching { ContainerInput.valueOf(loadout.renameInput) }.getOrDefault(ContainerInput.PICKUP),
+                            ),
+                        )
+                    },
+                )
+            }
+        }.onFailure {
+            logger.warn("Could not load loadout cache for $profile", it)
+        }
+    }
+
+    private fun save() {
+        val profile = loadedProfile ?: ProfileItemCache.currentProfile() ?: return
+        val saved = SavedLoadoutCache(
+            pages.values.flatMap(CachedLoadoutPage::loadouts).map { loadout ->
+                SavedLoadout(
+                    id = loadout.id,
+                    page = loadout.page,
+                    inventorySlot = loadout.inventorySlot,
+                    name = loadout.name,
+                    selector = ProfileItemCache.encode(loadout.selector),
+                    armor = loadout.armor.map(ProfileItemCache::encode).toMutableList(),
+                    equipment = loadout.equipment.map(ProfileItemCache::encode).toMutableList(),
+                    pet = ProfileItemCache.encode(loadout.pet),
+                    hotm = ProfileItemCache.encode(loadout.hotm),
+                    hotf = ProfileItemCache.encode(loadout.hotf),
+                    powerStone = ProfileItemCache.encode(loadout.powerStone),
+                    tunings = ProfileItemCache.encode(loadout.tunings),
+                    selected = loadout.selected,
+                    locked = loadout.locked,
+                    empty = loadout.empty,
+                    renameButton = loadout.renameAction.button,
+                    renameInput = loadout.renameAction.input.name,
+                )
+            }.toMutableList(),
+        )
+        val json = gson.toJson(saved)
+        if (json == lastSavedJson) return
+        lastSavedJson = json
+        ProfileItemCache.write("loadouts", profile, json)
+    }
+
+    private fun pageMatches(previous: CachedLoadoutPage?, current: CachedLoadoutPage): Boolean {
+        if (previous == null || previous.loadouts.size != current.loadouts.size) return false
+        return previous.loadouts.zip(current.loadouts).all { (first, second) ->
+            first.id == second.id &&
+                first.page == second.page &&
+                first.inventorySlot == second.inventorySlot &&
+                first.name == second.name &&
+                first.selected == second.selected &&
+                first.locked == second.locked &&
+                first.empty == second.empty &&
+                first.renameAction == second.renameAction &&
+                ItemStack.matches(first.selector, second.selector) &&
+                ProfileItemCache.stacksMatch(first.items, second.items)
         }
     }
 
