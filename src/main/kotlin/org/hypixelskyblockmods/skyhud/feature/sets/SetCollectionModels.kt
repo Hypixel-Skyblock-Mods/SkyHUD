@@ -13,6 +13,7 @@ data class SetCollectionTarget(
 )
 
 data class CachedSetSlot(
+    val page: Int,
     val index: Int,
     val id: Int,
     val items: List<ItemStack>,
@@ -20,6 +21,13 @@ data class CachedSetSlot(
     val selected: Boolean,
     val locked: Boolean,
     val selectable: Boolean,
+)
+
+data class SetCard(
+    val page: Int,
+    val index: Int,
+    val id: Int,
+    val set: CachedSetSlot?,
 )
 
 data class CachedSetPage(
@@ -45,6 +53,7 @@ class SetCollectionRepository {
             val locked = VanillaItemIds.isItem(selector, "red_dye")
 
             CachedSetSlot(
+                page = page,
                 index = column,
                 id = (page - 1) * 9 + column + 1,
                 items = items,
@@ -58,6 +67,15 @@ class SetCollectionRepository {
     }
 
     fun page(page: Int): CachedSetPage? = pages[page]
+
+    fun allSets(totalPages: Int): List<SetCard> = buildList {
+        (1..totalPages).forEach { page ->
+            val cachedByIndex = pages[page]?.slots?.associateBy(CachedSetSlot::index).orEmpty()
+            repeat(9) { index ->
+                add(SetCard(page, index, (page - 1) * 9 + index + 1, cachedByIndex[index]))
+            }
+        }
+    }
 }
 
 object SetCollectionDetection {

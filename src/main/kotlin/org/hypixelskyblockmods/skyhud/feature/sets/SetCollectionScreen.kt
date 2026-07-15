@@ -1,16 +1,22 @@
 package org.hypixelskyblockmods.skyhud.feature.sets
 
 import kotlin.math.ceil
+import net.minecraft.client.entity.ClientMannequin
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.client.renderer.PlayerSkinRenderCache
 import net.minecraft.network.chat.Component
+import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.player.PlayerSkin
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.Level
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
-import org.hypixelskyblockmods.skyhud.util.VanillaItemIds
 
 class SetCollectionScreen(
     screenName: String,
@@ -18,15 +24,17 @@ class SetCollectionScreen(
     private val searchHint: String,
     private val setLabel: String,
     private val repository: SetCollectionRepository,
+    private val renderArmorMannequin: Boolean,
+    private val requestAction: (page: Int, index: Int?) -> Unit,
+    private val editOriginal: () -> Unit,
     private val closed: () -> Unit,
 ) : Screen(Component.literal(screenName)) {
     private data class SetBounds(
-        val index: Int,
+        val card: SetCard,
         val x: Int,
         val y: Int,
         val width: Int,
         val height: Int,
-        val clickable: Boolean,
     )
 
     private var currentPage = 1
@@ -37,17 +45,17 @@ class SetCollectionScreen(
     private var maxScroll = 0.0
     private var setBounds = emptyList<SetBounds>()
     private var draggingScrollbar = false
+    private val mannequins = mutableMapOf<Int, SetMannequin>()
 
-    private val headerHeight = 54
-    private val pageColumns = 3
-    private val pageWidth = 230
-    private val pageGapHorizontal = 28
-    private val pageGapVertical = 30
-    private val pageTitleHeight = 19
-    private val slotSize = 48
-    private val slotGap = 12
-    private val itemSize = 16
-    private val gridWidth = slotSize * 4 + slotGap * 3
+    private val panelMaxWidth = 620
+    private val panelMaxHeight = 430
+    private val headerHeight = 24
+    private val columns = 5
+    private val cardGap = 6
+    private val rowGap = 9
+    private val titleHeight = 13
+    private val cardHeight = if (renderArmorMannequin) 126 else 70
+    private val slotSize = 20
 
     fun bind(target: SetCollectionTarget) {
         currentPage = target.page
@@ -64,13 +72,13 @@ class SetCollectionScreen(
 
     override fun init() {
         super.init()
-        val searchWidth = minOf(240, width / 3)
+        val searchWidth = 140
         val search = EditBox(
             font,
-            width - searchWidth - 24,
-            18,
+            panelX() + (panelWidth() - searchWidth) / 2,
+            panelY() + 6,
             searchWidth,
-            20,
+            12,
             Component.literal("Search $heading"),
         )
         search.value = searchText
@@ -91,196 +99,272 @@ class SetCollectionScreen(
         mouseY: Int,
         delta: Float,
     ) {
-        graphics.fill(0, 0, width, height, SkyHudTheme.BACKGROUND)
-        graphics.fill(0, 0, width, headerHeight, 0xFF101010.toInt())
-        graphics.fill(0, headerHeight - 1, width, headerHeight, SkyHudTheme.PRIMARY)
-        graphics.text(font, heading, 24, 23, SkyHudTheme.TEXT, false)
-
-        val searchWidth = minOf(240, width / 3)
+        val panelX = panelX()
+        val panelY = panelY()
+        val panelWidth = panelWidth()
+        val panelHeight = panelHeight()
+        graphics.fill(0, 0, width, height, 0x70000000)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
-            width - searchWidth - 30,
-            13,
-            searchWidth + 12,
-            30,
-            SkyHudTheme.SURFACE,
-            SkyHudTheme.BORDER,
+            panelX,
+            panelY,
+            panelWidth,
+            panelHeight,
+            0xF20D0D0D.toInt(),
+            SkyHudTheme.PRIMARY,
         )
-
-        drawNavigation(graphics, mouseX, mouseY)
-        drawSets(graphics, mouseX, mouseY)
-        drawScrollbar(graphics, mouseX, mouseY)
+        graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.PRIMARY)
+        drawHeader(graphics, mouseX, mouseY, panelX, panelY, panelWidth)
+        drawSets(graphics, mouseX, mouseY, panelX, panelY, panelWidth, panelHeight)
         super.extractRenderState(graphics, mouseX, mouseY, delta)
     }
 
-    private fun drawNavigation(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        if (totalPages <= 1) return
-        val previousEnabled = currentPage > 1 && hasNavigationArrow(45)
-        val nextEnabled = currentPage < totalPages && hasNavigationArrow(53)
-        drawNavigationButton(graphics, width / 2 - 58, 15, "<", previousEnabled, mouseX, mouseY)
-        drawNavigationButton(graphics, width / 2 + 30, 15, ">", nextEnabled, mouseX, mouseY)
-        val pageLabel = "$currentPage / $totalPages"
-        graphics.text(
-            font,
-            pageLabel,
-            width / 2 - font.width(pageLabel) / 2,
-            23,
-            SkyHudTheme.TEXT_MUTED,
-            false,
-        )
-    }
-
-    private fun drawNavigationButton(
+    private fun drawHeader(
         graphics: GuiGraphicsExtractor,
-        x: Int,
-        y: Int,
-        label: String,
-        enabled: Boolean,
         mouseX: Int,
         mouseY: Int,
+        panelX: Int,
+        panelY: Int,
+        panelWidth: Int,
     ) {
-        val hovered = enabled && mouseX in x until (x + 28) && mouseY in y until (y + 24)
+        val editHovered = mouseX in (panelX + 7) until (panelX + 40) && mouseY in (panelY + 4) until (panelY + 20)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
-            x,
-            y,
-            28,
-            24,
-            when {
-                hovered -> SkyHudTheme.PRIMARY_HOVER
-                enabled -> SkyHudTheme.PRIMARY
-                else -> SkyHudTheme.SURFACE
-            },
-            if (enabled) SkyHudTheme.PRIMARY else SkyHudTheme.BORDER,
+            panelX + 7,
+            panelY + 4,
+            33,
+            16,
+            if (editHovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            SkyHudTheme.PRIMARY,
         )
-        graphics.text(font, label, x + 14 - font.width(label) / 2, y + 8, SkyHudTheme.TEXT, false)
+        graphics.text(font, "EDIT", panelX + 12, panelY + 8, SkyHudTheme.TEXT, false)
+        graphics.text(font, heading, panelX + 47, panelY + 8, SkyHudTheme.TEXT, false)
+
+        val searchWidth = 140
+        SkyHudTheme.outlinedRoundedRect(
+            graphics,
+            panelX + (panelWidth - searchWidth - 8) / 2,
+            panelY + 3,
+            searchWidth + 8,
+            18,
+            SkyHudTheme.SURFACE,
+            SkyHudTheme.BORDER,
+        )
     }
 
-    private fun drawSets(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        val page = repository.page(currentPage) ?: return
-        val visible = page.slots.filter(::setMatchesSearch)
-        val viewportTop = headerHeight + 16
-        val viewportBottom = height - 16
-        val viewportHeight = (viewportBottom - viewportTop).coerceAtLeast(1)
-        val contentWidth = pageColumns * pageWidth + (pageColumns - 1) * pageGapHorizontal
-        val startX = (width - contentWidth) / 2
-        val pageHeight = pageTitleHeight + slotSize
-        val rows = ceil(visible.size / pageColumns.toDouble()).toInt()
-        val contentHeight = rows * pageHeight + (rows - 1).coerceAtLeast(0) * pageGapVertical
+    private fun drawSets(
+        graphics: GuiGraphicsExtractor,
+        mouseX: Int,
+        mouseY: Int,
+        panelX: Int,
+        panelY: Int,
+        panelWidth: Int,
+        panelHeight: Int,
+    ) {
+        val visible = repository.allSets(totalPages).filter(::setMatchesSearch)
+        val viewportTop = panelY + headerHeight + 6
+        val viewportBottom = panelY + panelHeight - 7
+        val viewportHeight = viewportBottom - viewportTop
+        val contentWidth = panelWidth - 24
+        val cardWidth = (contentWidth - (columns - 1) * cardGap) / columns
+        val startX = panelX + (panelWidth - (columns * cardWidth + (columns - 1) * cardGap)) / 2
+        val fullCardHeight = titleHeight + cardHeight
+        val rows = ceil(visible.size / columns.toDouble()).toInt()
+        val contentHeight = rows * fullCardHeight + (rows - 1).coerceAtLeast(0) * rowGap
         maxScroll = (contentHeight - viewportHeight).coerceAtLeast(0).toDouble()
         scroll = scroll.coerceIn(0.0, maxScroll)
 
-        graphics.enableScissor(0, viewportTop, width, viewportBottom)
+        graphics.enableScissor(panelX + 2, viewportTop, panelX + panelWidth - 2, viewportBottom)
         val bounds = ArrayList<SetBounds>(visible.size)
-        visible.forEachIndexed { position, set ->
-            val column = position % pageColumns
-            val row = position / pageColumns
-            val x = startX + column * (pageWidth + pageGapHorizontal)
-            val y = viewportTop + row * (pageHeight + pageGapVertical) - scroll.toInt()
-            drawSet(graphics, set, x, y, mouseX, mouseY)
-            bounds += SetBounds(set.index, x, y, pageWidth, pageHeight, set.selectable)
+        visible.forEachIndexed { position, card ->
+            val x = startX + (position % columns) * (cardWidth + cardGap)
+            val y = viewportTop + (position / columns) * (fullCardHeight + rowGap) - scroll.toInt()
+            drawSet(graphics, card, x, y, cardWidth, mouseX, mouseY)
+            bounds += SetBounds(card, x, y, cardWidth, fullCardHeight)
         }
         graphics.disableScissor()
         setBounds = bounds
+        drawScrollbar(graphics, mouseX, mouseY, panelX + panelWidth - 8, viewportTop, viewportBottom)
 
         if (visible.isEmpty()) {
-            val message = "No ${heading.lowercase()} sets match ‘$searchText’"
-            graphics.text(
-                font,
-                message,
-                width / 2 - font.width(message) / 2,
-                viewportTop + 30,
-                SkyHudTheme.TEXT_MUTED,
-                false,
-            )
+            val message = "No ${heading.lowercase()} sets match '$searchText'"
+            graphics.text(font, message, panelX + (panelWidth - font.width(message)) / 2, viewportTop + 24, SkyHudTheme.TEXT_MUTED, false)
         }
     }
 
     private fun drawSet(
         graphics: GuiGraphicsExtractor,
-        set: CachedSetSlot,
+        card: SetCard,
+        x: Int,
+        y: Int,
+        width: Int,
+        mouseX: Int,
+        mouseY: Int,
+    ) {
+        val set = card.set
+        val cardY = y + titleHeight
+        val empty = set?.items?.all(ItemStack::isEmpty) != false
+        val locked = set?.locked == true
+        val hovered = mouseX in x until (x + width) && mouseY in cardY until (cardY + cardHeight)
+        SkyHudTheme.roundedRect(
+            graphics,
+            x,
+            cardY,
+            width,
+            cardHeight,
+            when {
+                set == null || empty || locked -> 0xFF101010.toInt()
+                hovered -> SkyHudTheme.SURFACE_RAISED
+                else -> SkyHudTheme.SURFACE
+            },
+        )
+        if (set?.selected == true) drawOutline(graphics, x - 2, cardY - 2, width + 4, cardHeight + 4, SkyHudTheme.PRIMARY_HOVER)
+        graphics.text(
+            font,
+            "$setLabel ${card.id}",
+            x,
+            y + 1,
+            if (set == null || empty || locked) SkyHudTheme.TEXT_MUTED else SkyHudTheme.TEXT,
+            false,
+        )
+
+        if (set == null) {
+            drawLoadPageButton(graphics, card.page, x, cardY, width, mouseX, mouseY)
+            return
+        }
+
+        if (renderArmorMannequin) {
+            if (!empty) drawArmorMannequin(graphics, set, x + 10, cardY + 5, x + width - 10, cardY + cardHeight - 5, mouseX, mouseY)
+            if (empty) drawCenteredLabel(graphics, "EMPTY", x, cardY, width)
+        } else {
+            val gridWidth = 4 * slotSize + 3 * 4
+            val gridX = x + (width - gridWidth) / 2
+            val gridY = cardY + (cardHeight - slotSize) / 2
+            set.items.forEachIndexed { index, stack ->
+                drawItemSlot(graphics, stack, gridX + index * (slotSize + 4), gridY, mouseX, mouseY)
+            }
+            if (empty) drawCenteredLabel(graphics, "EMPTY", x, cardY, width)
+        }
+    }
+
+    private fun drawLoadPageButton(
+        graphics: GuiGraphicsExtractor,
+        page: Int,
+        x: Int,
+        cardY: Int,
+        width: Int,
+        mouseX: Int,
+        mouseY: Int,
+    ) {
+        val label = "LOAD PAGE $page"
+        val buttonWidth = (font.width(label) + 12).coerceAtMost(width - 12)
+        val buttonX = x + (width - buttonWidth) / 2
+        val buttonY = cardY + (cardHeight - 20) / 2
+        val hovered = mouseX in buttonX until (buttonX + buttonWidth) && mouseY in buttonY until (buttonY + 20)
+        SkyHudTheme.outlinedRoundedRect(
+            graphics,
+            buttonX,
+            buttonY,
+            buttonWidth,
+            20,
+            if (hovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            SkyHudTheme.PRIMARY,
+        )
+        graphics.text(font, label, buttonX + (buttonWidth - font.width(label)) / 2, buttonY + 6, SkyHudTheme.TEXT, false)
+    }
+
+    private fun drawCenteredLabel(graphics: GuiGraphicsExtractor, label: String, x: Int, y: Int, width: Int) {
+        graphics.text(font, label, x + (width - font.width(label)) / 2, y + cardHeight / 2, SkyHudTheme.TEXT_MUTED, false)
+    }
+
+    private fun drawItemSlot(
+        graphics: GuiGraphicsExtractor,
+        stack: ItemStack,
         x: Int,
         y: Int,
         mouseX: Int,
         mouseY: Int,
     ) {
-        val gridX = x + (pageWidth - gridWidth) / 2
-        val gridY = y + pageTitleHeight
-        if (set.selected) {
-            drawOutline(graphics, gridX - 4, gridY - 4, gridWidth + 8, slotSize + 8, SkyHudTheme.PRIMARY_HOVER)
-        }
-
-        graphics.text(
-            font,
-            "$setLabel ${set.id}",
+        val hovered = mouseX in x until (x + slotSize) && mouseY in y until (y + slotSize)
+        graphics.fill(
             x,
-            y + 2,
-            if (set.locked) SkyHudTheme.TEXT_MUTED else SkyHudTheme.TEXT,
-            false,
+            y,
+            x + slotSize,
+            y + slotSize,
+            when {
+                hovered -> SkyHudTheme.SLOT_HOVER
+                stack.isEmpty -> SkyHudTheme.SLOT
+                else -> SkyHudTheme.SLOT_FILLED
+            },
         )
+        if (stack.isEmpty) return
+        graphics.item(stack, x + 2, y + 2)
+        graphics.itemDecorations(font, stack, x + 2, y + 2)
+        if (hovered) graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
+    }
 
-        val itemInset = (slotSize - itemSize) / 2
-        repeat(4) { index ->
-            val stack = set.items[index]
-            val slotX = gridX + index * (slotSize + slotGap)
-            val hovered = mouseX in slotX until (slotX + slotSize) && mouseY in gridY until (gridY + slotSize)
-            graphics.fill(
-                slotX,
-                gridY,
-                slotX + slotSize,
-                gridY + slotSize,
-                when {
-                    hovered -> SkyHudTheme.SLOT_HOVER
-                    stack.isEmpty -> SkyHudTheme.SLOT
-                    else -> SkyHudTheme.SLOT_FILLED
-                },
-            )
-            if (!stack.isEmpty) {
-                val itemX = slotX + itemInset
-                val itemY = gridY + itemInset
-                graphics.item(stack, itemX, itemY)
-                graphics.itemDecorations(font, stack, itemX, itemY)
-                if (hovered) graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
-            }
+    private fun drawArmorMannequin(
+        graphics: GuiGraphicsExtractor,
+        set: CachedSetSlot,
+        left: Int,
+        top: Int,
+        right: Int,
+        bottom: Int,
+        mouseX: Int,
+        mouseY: Int,
+    ) {
+        val level = minecraft.level ?: return
+        val mannequin = mannequins.getOrPut(set.id) {
+            SetMannequin(level, minecraft.playerSkinRenderCache(), minecraft.player?.skin ?: ClientMannequin.DEFAULT_SKIN)
+                .also { it.id = -200_000 - set.id }
+        }
+        listOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET).forEachIndexed { index, slot ->
+            mannequin.setItemSlot(slot, set.items.getOrNull(index) ?: ItemStack.EMPTY)
+        }
+        mannequin.tickCount = minecraft.player?.tickCount ?: 0
+        val scale = ((right - left) * 0.66).toInt().coerceIn(30, 46)
+        graphics.enableScissor(left, top, right, bottom)
+        InventoryScreen.extractEntityInInventoryFollowsMouse(
+            graphics,
+            left,
+            top,
+            right,
+            bottom,
+            scale,
+            0f,
+            mouseX.toFloat(),
+            mouseY.toFloat(),
+            mannequin,
+        )
+        graphics.disableScissor()
+        if (mouseX !in left until right || mouseY !in top until bottom) return
+        val armorIndex = ((mouseY - top) * 4 / (bottom - top).coerceAtLeast(1)).coerceIn(0, 3)
+        set.items.getOrNull(armorIndex)?.takeUnless(ItemStack::isEmpty)?.let {
+            graphics.setTooltipForNextFrame(font, it, mouseX, mouseY)
         }
     }
 
-    private fun drawOutline(
+    private fun drawScrollbar(
         graphics: GuiGraphicsExtractor,
+        mouseX: Int,
+        mouseY: Int,
         x: Int,
-        y: Int,
-        width: Int,
-        height: Int,
-        color: Int,
+        top: Int,
+        bottom: Int,
     ) {
-        val thickness = 2
-        graphics.fill(x, y, x + width, y + thickness, color)
-        graphics.fill(x, y + height - thickness, x + width, y + height, color)
-        graphics.fill(x, y, x + thickness, y + height, color)
-        graphics.fill(x + width - thickness, y, x + width, y + height, color)
-    }
-
-    private fun drawScrollbar(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         if (maxScroll <= 0.0) return
-        val top = headerHeight + 16
-        val bottom = height - 16
         val trackHeight = bottom - top
-        val thumbHeight = (trackHeight * (trackHeight / (trackHeight + maxScroll))).toInt().coerceAtLeast(28)
+        val thumbHeight = (trackHeight * (trackHeight / (trackHeight + maxScroll))).toInt().coerceAtLeast(24)
         val thumbTravel = trackHeight - thumbHeight
         val thumbY = top + ((scroll / maxScroll) * thumbTravel).toInt()
-        val x = width - 16
-        SkyHudTheme.roundedRect(graphics, x, top, 4, trackHeight, 0xFF202020.toInt())
+        SkyHudTheme.roundedRect(graphics, x, top, 3, trackHeight, 0xFF202020.toInt())
         SkyHudTheme.roundedRect(
             graphics,
             x,
             thumbY,
-            4,
+            3,
             thumbHeight,
-            if (mouseX in (x - 3)..(x + 7) && mouseY in thumbY..(thumbY + thumbHeight)) {
-                SkyHudTheme.PRIMARY_HOVER
-            } else {
-                SkyHudTheme.PRIMARY
-            },
+            if (mouseX in (x - 3)..(x + 6) && mouseY in thumbY..(thumbY + thumbHeight)) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
         )
     }
 
@@ -291,7 +375,7 @@ class SetCollectionScreen(
         verticalAmount: Double,
     ): Boolean {
         if (maxScroll > 0.0) {
-            scroll = (scroll - verticalAmount * 34.0).coerceIn(0.0, maxScroll)
+            scroll = (scroll - verticalAmount * 30.0).coerceIn(0.0, maxScroll)
             return true
         }
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
@@ -302,33 +386,37 @@ class SetCollectionScreen(
         if (click.button() != 0) return false
         val mouseX = click.x.toInt()
         val mouseY = click.y.toInt()
-
-        if (mouseX in (width - 21)..(width - 6) && mouseY in (headerHeight + 8)..(height - 8)) {
-            draggingScrollbar = true
-            updateScrollFromMouse(mouseY)
+        val panelX = panelX()
+        val panelY = panelY()
+        if (mouseX in (panelX + 7) until (panelX + 40) && mouseY in (panelY + 4) until (panelY + 20)) {
+            editOriginal()
             return true
         }
-        if (mouseY in 15 until 39) {
-            if (mouseX in (width / 2 - 58) until (width / 2 - 30)) {
-                clickNavigationSlot(45)
-                return true
-            }
-            if (mouseX in (width / 2 + 30) until (width / 2 + 58)) {
-                clickNavigationSlot(53)
-                return true
-            }
+
+        val viewportTop = panelY + headerHeight + 6
+        val viewportBottom = panelY + panelHeight() - 7
+        val scrollbarX = panelX + panelWidth() - 8
+        if (mouseX in (scrollbarX - 4)..(scrollbarX + 7) && mouseY in viewportTop..viewportBottom) {
+            draggingScrollbar = true
+            updateScrollFromMouse(mouseY, viewportTop, viewportBottom)
+            return true
         }
 
-        val set = setBounds.firstOrNull {
+        val bounds = setBounds.firstOrNull {
             mouseX in it.x until (it.x + it.width) && mouseY in it.y until (it.y + it.height)
         } ?: return false
-        if (set.clickable) clickBackingSlot(36 + set.index)
+        val set = bounds.card.set
+        if (set == null) {
+            requestAction(bounds.card.page, null)
+        } else if (set.selectable) {
+            if (set.page == currentPage) clickBackingSlot(36 + set.index) else requestAction(set.page, set.index)
+        }
         return true
     }
 
     override fun mouseDragged(click: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
         if (draggingScrollbar) {
-            updateScrollFromMouse(click.y.toInt())
+            updateScrollFromMouse(click.y.toInt(), panelY() + headerHeight + 6, panelY() + panelHeight() - 7)
             return true
         }
         return super.mouseDragged(click, dragX, dragY)
@@ -342,48 +430,60 @@ class SetCollectionScreen(
         return super.mouseReleased(click)
     }
 
-    private fun updateScrollFromMouse(mouseY: Int) {
-        val top = headerHeight + 16
-        val bottom = height - 16
-        val percentage = ((mouseY - top).toDouble() / (bottom - top)).coerceIn(0.0, 1.0)
-        scroll = percentage * maxScroll
+    private fun updateScrollFromMouse(mouseY: Int, top: Int, bottom: Int) {
+        scroll = (((mouseY - top).toDouble() / (bottom - top)).coerceIn(0.0, 1.0) * maxScroll)
     }
-
-    private fun clickNavigationSlot(slot: Int) {
-        if (!hasNavigationArrow(slot)) return
-        clickBackingSlot(slot)
-    }
-
-    private fun hasNavigationArrow(slot: Int): Boolean =
-        backingMenu?.getSlot(slot)?.item?.let { VanillaItemIds.isItem(it, "arrow") } == true
 
     private fun clickBackingSlot(slot: Int) {
         val menu = backingMenu ?: return
         val player = minecraft.player ?: return
         if (player.containerMenu !== menu || slot !in 0 until 54) return
-        minecraft.gameMode?.handleContainerInput(
-            menu.containerId,
-            slot,
-            0,
-            ContainerInput.PICKUP,
-            player,
-        )
+        minecraft.gameMode?.handleContainerInput(menu.containerId, slot, 0, ContainerInput.PICKUP, player)
     }
 
-    private fun setMatchesSearch(set: CachedSetSlot): Boolean {
+    private fun setMatchesSearch(card: SetCard): Boolean {
         if (searchText.isBlank()) return true
         val terms = searchText.trim().split(Regex("\\s+"))
         return terms.all { term ->
-            set.items.any { !it.isEmpty && it.hoverName.string.contains(term, ignoreCase = true) }
+            "$setLabel ${card.id}".contains(term, ignoreCase = true) ||
+                card.set?.items?.any { !it.isEmpty && it.hoverName.string.contains(term, ignoreCase = true) } == true
         }
     }
+
+    private fun drawOutline(graphics: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, color: Int) {
+        graphics.fill(x, y, x + width, y + 2, color)
+        graphics.fill(x, y + height - 2, x + width, y + height, color)
+        graphics.fill(x, y, x + 2, y + height, color)
+        graphics.fill(x + width - 2, y, x + width, y + height, color)
+    }
+
+    private fun panelWidth(): Int = (width - 20).coerceAtMost(panelMaxWidth).coerceAtLeast(1)
+
+    private fun panelHeight(): Int = (height - 20).coerceAtMost(panelMaxHeight).coerceAtLeast(1)
+
+    private fun panelX(): Int = (width - panelWidth()) / 2
+
+    private fun panelY(): Int = (height - panelHeight()) / 2
 
     override fun onClose() {
         closed()
         backingMenu = null
+        mannequins.clear()
         minecraft.player?.closeContainer()
         super.onClose()
     }
 
     override fun isPauseScreen(): Boolean = false
+}
+
+private class SetMannequin(
+    level: Level,
+    skinRenderCache: PlayerSkinRenderCache,
+    private val displaySkin: PlayerSkin,
+) : ClientMannequin(level, skinRenderCache) {
+    override fun isSpectator(): Boolean = false
+
+    override fun shouldShowName(): Boolean = false
+
+    override fun getSkin(): PlayerSkin = displaySkin
 }
