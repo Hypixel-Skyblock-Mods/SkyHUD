@@ -34,8 +34,13 @@ object EquipmentController {
     }
 
     fun onClientTick(client: Minecraft) {
-        val overlay = activeScreen ?: return
-        if (ScreenCompat.currentScreen() !== overlay) return
+        val current = ScreenCompat.currentScreen() ?: return
+        var overlay = activeScreen
+        if (overlay == null || current !== overlay) {
+            onScreenOpened(client, current)
+            overlay = activeScreen ?: return
+            if (ScreenCompat.currentScreen() !== overlay) return
+        }
         overlay.refreshBackingMenu(client.player?.containerMenu)
     }
 
