@@ -16,6 +16,7 @@ import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
+import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 
 class LoadoutScreen(
@@ -97,7 +98,7 @@ class LoadoutScreen(
         mouseY: Int,
         delta: Float,
     ) {
-        if (!SkyHudTheme.transparent) super.extractBackground(graphics, mouseX, mouseY, delta)
+        SkyHudBackdrop.renderPanelBlur(graphics, SkyHudBackdrop.Region(panelX(), panelY(), panelWidth(), panelHeight()))
     }
 
     override fun extractRenderState(
@@ -490,6 +491,7 @@ class LoadoutScreen(
             mouseX in headerConfigX(panelX, "LOADOUTS") until (headerConfigX(panelX, "LOADOUTS") + 16) &&
             mouseY in (panelY + 4) until (panelY + 20)
         ) {
+            onClose()
             SkyHudConfigManager.open()
             return true
         }

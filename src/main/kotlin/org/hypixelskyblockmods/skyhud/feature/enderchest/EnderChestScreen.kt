@@ -10,6 +10,7 @@ import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.item.ItemStack
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
+import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 
 class EnderChestScreen(
@@ -122,7 +123,13 @@ class EnderChestScreen(
         mouseY: Int,
         delta: Float,
     ) {
-        if (!SkyHudTheme.transparent) super.extractBackground(graphics, mouseX, mouseY, delta)
+        val panelY = panelY()
+        val inventoryTop = panelY + panelHeight() - inventoryHeight
+        SkyHudBackdrop.renderPanelBlur(
+            graphics,
+            SkyHudBackdrop.Region(panelX(), panelY, panelWidth(), inventoryTop - panelY + 4),
+            SkyHudBackdrop.Region(inventoryPanelX(), inventoryTop, inventoryPanelWidth(), inventoryHeight),
+        )
     }
 
     override fun extractRenderState(
@@ -517,6 +524,7 @@ class EnderChestScreen(
             mouseX in headerConfigX(panelX(), "STORAGE") until (headerConfigX(panelX(), "STORAGE") + 16) &&
             mouseY in (panelY() + 4) until (panelY() + 20)
         ) {
+            onClose()
             SkyHudConfigManager.open()
             return true
         }

@@ -12,6 +12,7 @@ import org.hypixelskyblockmods.skyhud.feature.enderchest.EnderChestController
 import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentController
 import org.hypixelskyblockmods.skyhud.feature.loadouts.LoadoutController
 import org.hypixelskyblockmods.skyhud.feature.wardrobe.WardrobeController
+import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.slf4j.LoggerFactory
 
 object SkyHudClient : ClientModInitializer {
@@ -37,7 +38,10 @@ object SkyHudClient : ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(EquipmentController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register(LoadoutController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register(WardrobeController::onClientTick)
-        ClientLifecycleEvents.CLIENT_STOPPING.register { SkyHudConfigManager.save() }
+        ClientLifecycleEvents.CLIENT_STOPPING.register {
+            SkyHudConfigManager.save()
+            SkyHudBackdrop.close()
+        }
         logger.info("SkyHUD initialized")
     }
 }

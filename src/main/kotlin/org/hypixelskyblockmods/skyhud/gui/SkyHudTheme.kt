@@ -10,17 +10,17 @@ object SkyHudTheme {
     val SCREEN_DIM: Int
         get() = if (transparent) 0x00000000 else 0x70000000
     val PANEL: Int
-        get() = if (transparent) 0x30000000 else mix(0xFF0D0D0D.toInt(), PRIMARY, 0.20f)
+        get() = if (transparent) 0x18000000 else mix(0xFF0D0D0D.toInt(), PRIMARY, 0.20f)
     val BACKGROUND: Int
-        get() = if (transparent) 0x38000000 else mix(0xFF0D0D0D.toInt(), PRIMARY, 0.18f)
+        get() = if (transparent) 0x20000000 else mix(0xFF0D0D0D.toInt(), PRIMARY, 0.18f)
     val SURFACE: Int
-        get() = if (transparent) 0xB8121212.toInt() else mix(0xFF141414.toInt(), PRIMARY, 0.18f)
+        get() = if (transparent) 0x88101010.toInt() else mix(0xFF141414.toInt(), PRIMARY, 0.18f)
     val SURFACE_RAISED: Int
-        get() = if (transparent) 0xCC181818.toInt() else mix(0xFF1A1A1A.toInt(), PRIMARY, 0.22f)
+        get() = if (transparent) 0xA0181818.toInt() else mix(0xFF1A1A1A.toInt(), PRIMARY, 0.22f)
     val EMPTY_SURFACE: Int
-        get() = if (transparent) 0xA8101010.toInt() else mix(0xFF101010.toInt(), PRIMARY, 0.14f)
+        get() = if (transparent) 0x70101010 else mix(0xFF101010.toInt(), PRIMARY, 0.14f)
     val BORDER: Int
-        get() = if (transparent) 0xC03A3A3A.toInt() else mix(0xFF292929.toInt(), PRIMARY, 0.35f)
+        get() = if (transparent) 0x80383838.toInt() else mix(0xFF292929.toInt(), PRIMARY, 0.35f)
     val PRIMARY: Int
         get() = runCatching {
             val color = SkyHudConfigManager.config.theme.mainColor.getEffectiveColourRGB() and 0x00FFFFFF
@@ -31,13 +31,13 @@ object SkyHudTheme {
     const val TEXT = 0xFFF4F6FA.toInt()
     const val TEXT_MUTED = 0xFF9097A3.toInt()
     val SLOT: Int
-        get() = if (transparent) 0xA8000000.toInt() else mix(0xFF090909.toInt(), PRIMARY, 0.12f)
+        get() = if (transparent) 0x70000000 else mix(0xFF090909.toInt(), PRIMARY, 0.12f)
     val SLOT_FILLED: Int
-        get() = if (transparent) 0xC00A0A0A.toInt() else mix(0xFF0B0B0B.toInt(), PRIMARY, 0.28f)
+        get() = if (transparent) 0x90080808.toInt() else mix(0xFF0B0B0B.toInt(), PRIMARY, 0.28f)
     val SLOT_HOVER: Int
-        get() = if (transparent) withAlpha(PRIMARY, 0xC0) else mix(0xFF202020.toInt(), PRIMARY, 0.50f)
+        get() = if (transparent) 0xB0282828.toInt() else mix(0xFF202020.toInt(), PRIMARY, 0.50f)
     val SCROLLBAR_TRACK: Int
-        get() = if (transparent) 0x70000000 else mix(0xFF202020.toInt(), PRIMARY, 0.16f)
+        get() = if (transparent) 0x50000000 else mix(0xFF202020.toInt(), PRIMARY, 0.16f)
 
     fun roundedRect(
         graphics: GuiGraphicsExtractor,
