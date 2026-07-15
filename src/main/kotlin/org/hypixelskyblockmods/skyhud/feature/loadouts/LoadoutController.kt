@@ -17,19 +17,24 @@ object LoadoutController {
     private var pendingAction: PendingAction? = null
     private var showOriginalNext = false
     private var originalMenu: ChestMenu? = null
+    private var deferredScreen: Screen? = null
     private val transition = OverlayMenuTransition("loadouts")
 
     fun redirectIncoming(client: Minecraft, screen: Screen): Screen {
         if (screen === activeScreen) return screen
         if (onScreenOpened(client, screen)) return activeScreen ?: screen
         val overlay = activeScreen
-        if (overlay != null && transition.retainIncoming(screen, overlay)) return overlay
+        if (overlay != null && transition.retainIncoming(screen, overlay)) {
+            deferredScreen = screen
+            return overlay
+        }
         return screen
     }
 
     fun onScreenOpened(client: Minecraft, screen: Screen): Boolean {
         if (!SkyHudConfigManager.config.huds.loadouts.enabled) return false
         val target = LoadoutDetector.detect(screen) ?: return false
+        if (deferredScreen === screen) deferredScreen = null
         if (originalMenu === target.menu) return false
         if (showOriginalNext) {
             showOriginalNext = false
@@ -68,6 +73,9 @@ object LoadoutController {
             overlay = activeScreen ?: return
             if (ScreenCompat.currentScreen() !== overlay) ScreenCompat.setScreen(overlay)
         }
+        deferredScreen?.let { deferred ->
+            if (onScreenOpened(client, deferred)) deferredScreen = null
+        }
         if (client.player?.containerMenu !== currentTarget?.menu) transition.scheduleRefresh()
         transition.tick(client, overlay)
         if (transition.acceptsBackingUpdates()) overlay.refreshBackingMenu(client.player?.containerMenu)
@@ -78,6 +86,7 @@ object LoadoutController {
         activeScreen = null
         currentTarget = null
         pendingAction = null
+        deferredScreen = null
     }
 
     private fun requestAction(page: Int, inventorySlot: Int?, action: LoadoutClickAction) {
@@ -127,6 +136,7 @@ object LoadoutController {
 
     private fun openOriginal() {
         showOriginalNext = true
+        deferredScreen = null
         transition.onRecognized()
         OverlayTransitionGuard.arm(activeScreen)
         Minecraft.getInstance().player?.connection?.sendCommand("loadouts")
