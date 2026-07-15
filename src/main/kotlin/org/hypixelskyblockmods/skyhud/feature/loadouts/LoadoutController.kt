@@ -9,6 +9,8 @@ import org.hypixelskyblockmods.skyhud.gui.OverlayTransitionGuard
 import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
 
 object LoadoutController {
+    private const val TRANSITION_SCREENS_TO_HIDE = 2
+
     private data class PendingAction(val page: Int, val inventorySlot: Int?, val action: LoadoutClickAction)
 
     private var activeScreen: LoadoutScreen? = null
@@ -16,15 +18,23 @@ object LoadoutController {
     private var pendingAction: PendingAction? = null
     private var showOriginalNext = false
     private var originalMenu: ChestMenu? = null
+    private var transitionScreensToHide = 0
 
     fun redirectIncoming(client: Minecraft, screen: Screen): Screen {
         if (screen === activeScreen) return screen
-        return if (onScreenOpened(client, screen)) activeScreen ?: screen else screen
+        if (onScreenOpened(client, screen)) return activeScreen ?: screen
+        val overlay = activeScreen
+        if (overlay != null && transitionScreensToHide > 0) {
+            transitionScreensToHide--
+            return overlay
+        }
+        return screen
     }
 
     fun onScreenOpened(client: Minecraft, screen: Screen): Boolean {
         if (!SkyHudConfigManager.config.huds.loadouts.enabled) return false
         val target = LoadoutDetector.detect(screen) ?: return false
+        transitionScreensToHide = 0
         if (originalMenu === target.menu) return false
         if (showOriginalNext) {
             showOriginalNext = false
@@ -69,6 +79,7 @@ object LoadoutController {
         activeScreen = null
         currentTarget = null
         pendingAction = null
+        transitionScreensToHide = 0
     }
 
     private fun requestAction(page: Int, inventorySlot: Int?, action: LoadoutClickAction) {
@@ -86,6 +97,7 @@ object LoadoutController {
         if (target.page == action.page) {
             pendingAction = null
             action.inventorySlot?.let { slot ->
+                transitionScreensToHide = TRANSITION_SCREENS_TO_HIDE
                 OverlayTransitionGuard.arm(activeScreen)
                 client.gameMode?.handleContainerInput(
                     target.menu.containerId,
@@ -99,6 +111,7 @@ object LoadoutController {
         }
 
         val navigationSlot = if (action.page > target.page) 53 else 45
+        transitionScreensToHide = TRANSITION_SCREENS_TO_HIDE
         OverlayTransitionGuard.arm(activeScreen)
         client.gameMode?.handleContainerInput(
             target.menu.containerId,
@@ -111,6 +124,7 @@ object LoadoutController {
 
     private fun openOriginal() {
         showOriginalNext = true
+        transitionScreensToHide = 0
         OverlayTransitionGuard.arm(activeScreen)
         Minecraft.getInstance().player?.connection?.sendCommand("loadouts")
     }

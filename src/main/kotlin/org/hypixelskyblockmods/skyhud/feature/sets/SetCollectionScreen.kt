@@ -48,14 +48,14 @@ class SetCollectionScreen(
     private var draggingScrollbar = false
     private val mannequins = mutableMapOf<Int, SetMannequin>()
 
-    private val panelMaxWidth = 620
-    private val panelMaxHeight = 430
+    private val panelMaxWidth = if (renderArmorMannequin) 620 else 500
+    private val panelMaxHeight = if (renderArmorMannequin) 430 else 500
     private val headerHeight = 24
-    private val columns = 5
+    private val columns = if (renderArmorMannequin) 5 else 8
     private val cardGap = 6
     private val rowGap = 9
     private val titleHeight = 13
-    private val cardHeight = if (renderArmorMannequin) 126 else 70
+    private val cardHeight = if (renderArmorMannequin) 126 else 104
     private val slotSize = 20
 
     fun bind(target: SetCollectionTarget) {
@@ -251,11 +251,11 @@ class SetCollectionScreen(
             if (!empty) drawArmorMannequin(graphics, set, x + 10, cardY + 5, x + width - 10, cardY + cardHeight - 5, mouseX, mouseY)
             if (empty) drawCenteredLabel(graphics, "EMPTY", x, cardY, width)
         } else {
-            val gridWidth = 4 * slotSize + 3 * 4
-            val gridX = x + (width - gridWidth) / 2
-            val gridY = cardY + (cardHeight - slotSize) / 2
+            val gridHeight = 4 * slotSize + 3 * 4
+            val gridX = x + (width - slotSize) / 2
+            val gridY = cardY + (cardHeight - gridHeight) / 2
             set.items.forEachIndexed { index, stack ->
-                drawItemSlot(graphics, stack, gridX + index * (slotSize + 4), gridY, mouseX, mouseY)
+                drawItemSlot(graphics, stack, gridX, gridY + index * (slotSize + 4), mouseX, mouseY)
             }
             if (empty) drawCenteredLabel(graphics, "EMPTY", x, cardY, width)
         }
@@ -270,7 +270,7 @@ class SetCollectionScreen(
         mouseX: Int,
         mouseY: Int,
     ) {
-        val label = "LOAD PAGE $page"
+        val label = if (renderArmorMannequin) "LOAD PAGE $page" else "PAGE $page"
         val buttonWidth = (font.width(label) + 12).coerceAtMost(width - 12)
         val buttonX = x + (width - buttonWidth) / 2
         val buttonY = cardY + (cardHeight - 20) / 2
