@@ -30,6 +30,39 @@ data class CachedLoadout(
 ) {
     val items: List<ItemStack>
         get() = armor + equipment + listOf(pet, hotm, hotf, powerStone, tunings)
+
+    val hotmName: String?
+        get() = selectorDetail(ItemText.lore(selector), "HOTM").selectedValue
+
+    val hotfName: String?
+        get() = selectorDetail(ItemText.lore(selector), "HOTF").selectedValue
+}
+
+private enum class SelectorDetailState {
+    PRESENT,
+    EMPTY,
+    UNKNOWN,
+}
+
+private data class SelectorDetail(
+    val state: SelectorDetailState,
+    val value: String? = null,
+) {
+    val selectedValue: String?
+        get() = value.takeIf { state == SelectorDetailState.PRESENT }
+}
+
+private fun selectorDetail(lore: List<String>, label: String): SelectorDetail {
+    val prefix = "$label:"
+    val line = lore.firstOrNull { it.trim().startsWith(prefix, ignoreCase = true) }
+        ?: return SelectorDetail(SelectorDetailState.UNKNOWN)
+    val value = line.trim().substring(prefix.length).trim()
+    return when {
+        value.equals("None", ignoreCase = true) || value.equals("Empty", ignoreCase = true) ->
+            SelectorDetail(SelectorDetailState.EMPTY)
+        value.isNotEmpty() -> SelectorDetail(SelectorDetailState.PRESENT, value)
+        else -> SelectorDetail(SelectorDetailState.UNKNOWN)
+    }
 }
 
 data class LoadoutClickAction(
@@ -102,7 +135,9 @@ object LoadoutRepository {
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private val pages = sortedMapOf<Int, CachedLoadoutPage>()
     private val armorSlots = listOf(11, 20, 29, 38)
+    private val armorLabels = listOf("Helmet", "Chestplate", "Leggings", "Boots")
     private val equipmentSlots = listOf(10, 19, 28, 37)
+    private val equipmentLabels = listOf("Necklace", "Cloak", "Belt", "Gloves/Bracelet")
     private const val petSlot = 21
     private const val hotfSlot = 9
     private const val hotmSlot = 18
@@ -142,35 +177,61 @@ object LoadoutRepository {
             val transitionalSelection = selected && observedFromAnotherLoadout != null &&
                 (remembered == null || !ProfileItemCache.stacksMatch(observedItems, remembered.items))
             val useObservedDetails = selected && !transitionalSelection
-            val armor = when {
-                useObservedDetails -> observedArmor
-                retainRemembered -> remembered?.armor.orEmpty()
-                else -> List(4) { ItemStack.EMPTY }
+            val armor = observedArmor.mapIndexed { index, observed ->
+                mergeDetail(
+                    observed = observed,
+                    remembered = remembered?.armor?.getOrNull(index),
+                    selector = selectorDetail(lore, armorLabels[index]),
+                    useObserved = useObservedDetails,
+                    retainRemembered = retainRemembered,
+                    requireMatchingName = true,
+                )
             }
-            val equipment = if (useObservedDetails) {
-                observedEquipment
-            } else if (retainRemembered) {
-                remembered?.equipment.orEmpty()
-            } else {
-                List(4) { ItemStack.EMPTY }
+            val equipment = observedEquipment.mapIndexed { index, observed ->
+                mergeDetail(
+                    observed = observed,
+                    remembered = remembered?.equipment?.getOrNull(index),
+                    selector = selectorDetail(lore, equipmentLabels[index]),
+                    useObserved = useObservedDetails,
+                    retainRemembered = retainRemembered,
+                    requireMatchingName = true,
+                )
             }
-            val pet = if (useObservedDetails) observedPet else remembered?.pet.takeIf { retainRemembered } ?: ItemStack.EMPTY
-            val hotf = if (useObservedDetails) observedHotf else remembered?.hotf.takeIf { retainRemembered } ?: ItemStack.EMPTY
-            val hotm = if (useObservedDetails) observedHotm else remembered?.hotm.takeIf { retainRemembered } ?: ItemStack.EMPTY
-            val powerStone = if (useObservedDetails) {
-                observedPowerStone
-            } else if (retainRemembered) {
-                remembered?.powerStone ?: ItemStack.EMPTY
-            } else {
-                ItemStack.EMPTY
-            }
-            val tunings = if (useObservedDetails) {
-                observedTunings
-            } else if (retainRemembered) {
-                remembered?.tunings ?: ItemStack.EMPTY
-            } else {
-                ItemStack.EMPTY
-            }
+            val pet = mergeDetail(
+                observedPet,
+                remembered?.pet,
+                selectorDetail(lore, "Pet"),
+                useObservedDetails,
+                retainRemembered,
+            )
+            val hotf = mergeDetail(
+                observedHotf,
+                remembered?.hotf,
+                selectorDetail(lore, "HOTF"),
+                useObservedDetails,
+                retainRemembered,
+            )
+            val hotm = mergeDetail(
+                observedHotm,
+                remembered?.hotm,
+                selectorDetail(lore, "HOTM"),
+                useObservedDetails,
+                retainRemembered,
+            )
+            val powerStone = mergeDetail(
+                observedPowerStone,
+                remembered?.powerStone,
+                selectorDetail(lore, "Power Stone"),
+                useObservedDetails,
+                retainRemembered,
+            )
+            val tunings = mergeDetail(
+                observedTunings,
+                remembered?.tunings,
+                selectorDetail(lore, "Tuning Template Slot"),
+                useObservedDetails,
+                retainRemembered,
+            )
 
             CachedLoadout(
                 id = id,
@@ -318,6 +379,30 @@ object LoadoutRepository {
             .takeUnless(VanillaItemIds::isGlassPane)
             ?.copy()
             ?: ItemStack.EMPTY
+
+    private fun mergeDetail(
+        observed: ItemStack,
+        remembered: ItemStack?,
+        selector: SelectorDetail,
+        useObserved: Boolean,
+        retainRemembered: Boolean,
+        requireMatchingName: Boolean = false,
+    ): ItemStack {
+        if (!retainRemembered || selector.state == SelectorDetailState.EMPTY) return ItemStack.EMPTY
+        if (!useObserved) return remembered ?: ItemStack.EMPTY
+        if (observed.isEmpty) {
+            return remembered.takeIf { selector.state == SelectorDetailState.PRESENT } ?: ItemStack.EMPTY
+        }
+        if (requireMatchingName && selector.state == SelectorDetailState.PRESENT &&
+            normalizedItemName(observed.hoverName.string) != normalizedItemName(selector.value.orEmpty())
+        ) {
+            return remembered ?: ItemStack.EMPTY
+        }
+        return observed
+    }
+
+    private fun normalizedItemName(value: String): String =
+        value.lowercase().filter(Char::isLetterOrDigit)
 
     private fun renameAction(lore: List<String>): LoadoutClickAction {
         val instruction = lore.firstOrNull { it.contains("rename", ignoreCase = true) }?.lowercase()

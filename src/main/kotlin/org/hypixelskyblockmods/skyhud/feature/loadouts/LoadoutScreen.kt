@@ -266,8 +266,13 @@ class LoadoutScreen(
             drawItemSlot(graphics, stack, equipmentX, cardY + 31 + index * 24, mouseX, mouseY)
         }
 
-        val utility = listOf(loadout.hotm, loadout.hotf, loadout.powerStone, loadout.tunings)
-        utility.forEachIndexed { index, stack ->
+        val utility = listOf(
+            loadout.hotm to loadout.hotmName,
+            loadout.hotf to loadout.hotfName,
+            loadout.powerStone to null,
+            loadout.tunings to null,
+        )
+        utility.forEachIndexed { index, (stack, selectedName) ->
             drawItemSlot(
                 graphics,
                 stack,
@@ -275,6 +280,7 @@ class LoadoutScreen(
                 cardY + cardHeight - 91 + index * 22,
                 mouseX,
                 mouseY,
+                selectedName,
             )
         }
 
@@ -326,6 +332,7 @@ class LoadoutScreen(
         y: Int,
         mouseX: Int,
         mouseY: Int,
+        tooltipOverride: String? = null,
     ) {
         val hovered = mouseInContentViewport(mouseX, mouseY) &&
             mouseX in x until (x + slotSize) && mouseY in y until (y + slotSize)
@@ -343,7 +350,13 @@ class LoadoutScreen(
         if (stack.isEmpty) return
         graphics.item(stack, x + 2, y + 2)
         graphics.itemDecorations(font, stack, x + 2, y + 2)
-        if (hovered) graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
+        if (hovered) {
+            if (tooltipOverride != null) {
+                graphics.setTooltipForNextFrame(Component.literal(tooltipOverride), mouseX, mouseY)
+            } else {
+                graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
+            }
+        }
     }
 
     private fun drawEditButton(
