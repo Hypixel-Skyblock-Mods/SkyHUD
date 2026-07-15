@@ -412,7 +412,8 @@ class EnderChestScreen(
         val itemY = mouseY - (card.y + pageTitleHeight)
         val column = itemX / slotPitch
         val row = itemY / slotPitch
-        if (itemX >= 0 && itemY >= 0 && column in 0..8 && row in 0 until visibleRowCount(EnderChestRepository.allPages())) {
+        val actualRows = EnderChestRepository.page(card.key)?.rows ?: 0
+        if (itemX >= 0 && itemY >= 0 && column in 0..8 && row in 0 until actualRows) {
             clickBackingSlot(9 + row * 9 + column, click.button(), click.hasShiftDown())
         }
         return true
@@ -460,7 +461,6 @@ class EnderChestScreen(
 
     private fun visibleRowCount(pages: List<StoragePageKey>): Int =
         (pages.mapNotNull { EnderChestRepository.page(it)?.rows }.maxOrNull()
-            ?: backingMenu?.rowCount?.minus(1)
             ?: 4).coerceIn(1, 5)
 
     private fun pageMatchesSearch(key: StoragePageKey): Boolean {
