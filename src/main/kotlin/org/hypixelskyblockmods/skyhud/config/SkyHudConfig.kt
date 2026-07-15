@@ -57,7 +57,7 @@ class DashboardConfig {
         name = "Update Check",
         desc = "Check GitHub Releases again for a newer stable SkyHUD version.",
     )
-    @field:ConfigEditorButton(buttonText = "Check again")
+    @field:ConfigEditorButton(buttonText = "Check")
     @JvmField
     @Transient
     var checkForUpdates = Runnable { SkyHudUpdateChecker.refresh(force = true) }
