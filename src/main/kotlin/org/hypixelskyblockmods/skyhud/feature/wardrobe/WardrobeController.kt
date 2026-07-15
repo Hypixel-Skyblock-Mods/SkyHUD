@@ -24,14 +24,13 @@ object WardrobeController {
         if (screen === activeScreen) return screen
         if (onScreenOpened(client, screen)) return activeScreen ?: screen
         val overlay = activeScreen
-        if (overlay != null && transition.retainIncoming(screen)) return overlay
+        if (overlay != null && transition.retainIncoming(screen, overlay)) return overlay
         return screen
     }
 
     fun onScreenOpened(client: Minecraft, screen: Screen): Boolean {
         if (!SkyHudConfigManager.config.huds.wardrobe.enabled) return false
         val target = WardrobeDetector.detect(screen) ?: return false
-        transition.onRecognized()
         if (originalMenu === target.menu) return false
         if (showOriginalNext) {
             showOriginalNext = false
@@ -40,6 +39,8 @@ object WardrobeController {
             currentTarget = null
             return false
         }
+        if (transition.isRefreshing() && currentTarget?.menu === target.menu) return activeScreen != null
+        transition.onRecognized()
         WardrobeRepository.sets.remember(target.page, target.menu)
         currentTarget = target
 
@@ -78,6 +79,7 @@ object WardrobeController {
             overlay = activeScreen ?: return
             if (ScreenCompat.currentScreen() !== overlay) ScreenCompat.setScreen(overlay)
         }
+        if (client.player?.containerMenu !== currentTarget?.menu) transition.scheduleRefresh()
         transition.tick(client, overlay)
         if (transition.acceptsBackingUpdates()) overlay.refreshBackingMenu(client.player?.containerMenu)
     }

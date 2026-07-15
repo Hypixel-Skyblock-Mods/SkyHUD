@@ -9,7 +9,10 @@ class OverlayMenuTransition(
 ) {
     private var incomingScreensToHide = 0
     private var transitionTicks = 0
-    private var refreshTicks = -1
+    private var closeTicks = -1
+    private var reopenTicks = -1
+    private var retryTicks = -1
+    private var attemptsRemaining = 0
 
     fun arm(screen: Screen?) {
         incomingScreensToHide = 2
@@ -17,40 +20,76 @@ class OverlayMenuTransition(
         OverlayTransitionGuard.arm(screen)
     }
 
-    fun retainIncoming(screen: Screen): Boolean {
-        if (screen !is AbstractContainerScreen<*> || incomingScreensToHide <= 0 || transitionTicks <= 0) return false
-        incomingScreensToHide--
+    fun retainIncoming(screen: Screen, retainedScreen: Screen): Boolean {
+        if (screen !is AbstractContainerScreen<*>) return false
+        if (!isRefreshing() && (incomingScreensToHide <= 0 || transitionTicks <= 0)) return false
+        if (!isRefreshing()) incomingScreensToHide--
+        OverlayTransitionGuard.arm(retainedScreen)
         return true
     }
 
     fun scheduleRefresh() {
-        if (refreshTicks < 0) refreshTicks = 2
+        if (isRefreshing()) return
+        attemptsRemaining = 3
+        closeTicks = 1
     }
 
-    fun acceptsBackingUpdates(): Boolean = refreshTicks < 0 && transitionTicks == 0
+    fun isRefreshing(): Boolean = closeTicks >= 0 || reopenTicks >= 0 || retryTicks >= 0
+
+    fun acceptsBackingUpdates(): Boolean = !isRefreshing() && transitionTicks == 0
 
     fun onRecognized() {
         incomingScreensToHide = 0
         transitionTicks = 0
-        refreshTicks = -1
+        clearRefresh()
     }
 
     fun tick(client: Minecraft, screen: Screen?) {
+        if (isRefreshing()) OverlayTransitionGuard.arm(screen)
         if (transitionTicks > 0) transitionTicks--
         if (transitionTicks == 0) incomingScreensToHide = 0
-        if (refreshTicks < 0) return
-        refreshTicks--
-        if (refreshTicks > 0) return
 
-        refreshTicks = -1
-        arm(screen)
-        client.player?.connection?.sendCommand(reopenCommand)
+        when {
+            closeTicks >= 0 -> {
+                closeTicks--
+                if (closeTicks <= 0) {
+                    closeTicks = -1
+                    arm(screen)
+                    client.player?.closeContainer()
+                    reopenTicks = 3
+                }
+            }
+            reopenTicks >= 0 -> {
+                reopenTicks--
+                if (reopenTicks <= 0) {
+                    reopenTicks = -1
+                    arm(screen)
+                    client.player?.connection?.sendCommand(reopenCommand)
+                    attemptsRemaining--
+                    retryTicks = 20
+                }
+            }
+            retryTicks >= 0 -> {
+                retryTicks--
+                if (retryTicks <= 0) {
+                    retryTicks = -1
+                    if (attemptsRemaining > 0) closeTicks = 1
+                }
+            }
+        }
     }
 
     fun clear(screen: Screen?) {
         incomingScreensToHide = 0
         transitionTicks = 0
-        refreshTicks = -1
+        clearRefresh()
         OverlayTransitionGuard.clear(screen)
+    }
+
+    private fun clearRefresh() {
+        closeTicks = -1
+        reopenTicks = -1
+        retryTicks = -1
+        attemptsRemaining = 0
     }
 }
