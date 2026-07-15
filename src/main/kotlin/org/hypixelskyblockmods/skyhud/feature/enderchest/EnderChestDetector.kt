@@ -29,6 +29,8 @@ object EnderChestDetector {
 
         if (title == "Storage") {
             if (menu.rowCount != 6 || menu.slots.size < 90) return null
+            val overviewSlots = (9..17) + (27..44)
+            if (overviewSlots.none { !menu.getSlot(it).item.isEmpty }) return null
             return EnderChestTarget.Overview(menu)
         }
 
