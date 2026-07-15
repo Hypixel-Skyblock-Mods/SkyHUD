@@ -10,9 +10,9 @@ object SkyHudTheme {
     val SCREEN_DIM: Int
         get() = if (transparent) 0x00000000 else 0x70000000
     val PANEL: Int
-        get() = if (transparent) 0x18000000 else mix(0xFF0D0D0D.toInt(), PRIMARY, 0.20f)
+        get() = if (transparent) 0x98060606.toInt() else mix(0xFF0D0D0D.toInt(), PRIMARY, 0.20f)
     val BACKGROUND: Int
-        get() = if (transparent) 0x20000000 else mix(0xFF0D0D0D.toInt(), PRIMARY, 0.18f)
+        get() = if (transparent) 0xA0060606.toInt() else mix(0xFF0D0D0D.toInt(), PRIMARY, 0.18f)
     val SURFACE: Int
         get() = if (transparent) 0x88101010.toInt() else mix(0xFF141414.toInt(), PRIMARY, 0.18f)
     val SURFACE_RAISED: Int
