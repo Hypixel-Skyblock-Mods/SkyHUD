@@ -9,12 +9,16 @@ inventory menus with clean, modern interfaces.
 
 - Shows Ender Chest pages and discovered Storage backpacks in one searchable,
   three-column overview.
+- Queries the populated Storage overview when needed, so unlocked backpacks are
+  discovered even when the overlay was opened from an Ender Chest command.
 - Remembers pages after they have been opened during the current session.
 - Displays an **Open this page** action for pages that have not been loaded yet.
 - Loads unopened pages through Hypixel's normal `/enderchest <page>` and
   `/backpack <page>` commands while keeping the SkyHUD overview visible.
 - Uses a compact partial-screen panel with the live player inventory and hotbar
   below the page grid.
+- Detects and renders each opened page's real row count, and supports persistent
+  star favorites that move chosen pages to the top.
 - Preserves left-click, right-click, shift-click, carried stacks, counts,
   tooltips, and server-side inventory behavior on the active page.
 - Uses a compact draggable scrollbar instead of the vanilla-style control.
