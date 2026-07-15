@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.minecraft.client.Minecraft
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.feature.enderchest.EnderChestController
+import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentController
 import org.hypixelskyblockmods.skyhud.feature.loadouts.LoadoutController
 import org.hypixelskyblockmods.skyhud.feature.wardrobe.WardrobeController
 import org.slf4j.LoggerFactory
@@ -27,10 +28,12 @@ object SkyHudClient : ClientModInitializer {
         }
         ScreenEvents.AFTER_INIT.register(ScreenEvents.AfterInit { client, screen, _, _ ->
             EnderChestController.onScreenOpened(client, screen)
+            EquipmentController.onScreenOpened(client, screen)
             LoadoutController.onScreenOpened(client, screen)
             WardrobeController.onScreenOpened(client, screen)
         })
         ClientTickEvents.END_CLIENT_TICK.register(EnderChestController::onClientTick)
+        ClientTickEvents.END_CLIENT_TICK.register(EquipmentController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register(LoadoutController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register(WardrobeController::onClientTick)
         logger.info("SkyHUD initialized")

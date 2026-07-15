@@ -45,6 +45,18 @@ class SkyHudConfig : Config() {
         optionDescription = "Replace Hypixel's Wardrobe with clean outfit cards and search.",
     )
 
+    @field:Category(
+        name = "Equipment",
+        desc = "Configure SkyHUD's modern Equipment Sets interface.",
+    )
+    @field:Expose
+    @JvmField
+    var equipment = FeatureToggle(
+        enabled = true,
+        optionName = "Modern Equipment Sets",
+        optionDescription = "Replace /eq with a searchable three-column equipment set overview.",
+    )
+
     override fun getTitle(): StructuredText =
         IMinecraft.INSTANCE.createLiteral("SkyHUD Settings")
 }
