@@ -18,6 +18,12 @@
         "adapter": "kotlin",
         "value": "org.hypixelskyblockmods.skyhud.SkyHudClient"
       }
+    ],
+    "modmenu": [
+      {
+        "adapter": "kotlin",
+        "value": "org.hypixelskyblockmods.skyhud.compat.modmenu.SkyHudModMenu"
+      }
     ]
   },
   "depends": {

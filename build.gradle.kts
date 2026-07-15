@@ -9,8 +9,8 @@ plugins {
 }
 
 val targets = mapOf(
-    "mc26_1_2" to Target("26.1.2", "0.152.1+26.1.2"),
-    "mc26_2" to Target("26.2", "0.154.2+26.2"),
+    "mc26_1_2" to Target("26.1.2", "0.152.1+26.1.2", "modern-26.1", "18.0.0"),
+    "mc26_2" to Target("26.2", "0.154.2+26.2", "modern-26.2", "20.0.1"),
 )
 
 allprojects {
@@ -20,6 +20,8 @@ allprojects {
     repositories {
         mavenCentral()
         maven("https://maven.fabricmc.net/")
+        maven("https://maven.notenoughupdates.org/releases/")
+        maven("https://api.modrinth.com/maven")
     }
 }
 
@@ -36,6 +38,9 @@ subprojects {
         add("implementation", "net.fabricmc:fabric-loader:0.19.3")
         add("implementation", "net.fabricmc.fabric-api:fabric-api:${target.fabricApi}")
         add("implementation", "net.fabricmc:fabric-language-kotlin:1.13.12+kotlin.2.4.0")
+        add("implementation", "org.notenoughupdates.moulconfig:${target.moulConfig}:4.7.2")
+        add("include", "org.notenoughupdates.moulconfig:${target.moulConfig}:4.7.2")
+        add("compileOnly", "maven.modrinth:modmenu:${target.modMenu}")
     }
 
     extensions.configure<org.gradle.api.plugins.JavaPluginExtension> {
@@ -92,4 +97,9 @@ subprojects {
     }
 }
 
-data class Target(val minecraft: String, val fabricApi: String)
+data class Target(
+    val minecraft: String,
+    val fabricApi: String,
+    val moulConfig: String,
+    val modMenu: String,
+)
