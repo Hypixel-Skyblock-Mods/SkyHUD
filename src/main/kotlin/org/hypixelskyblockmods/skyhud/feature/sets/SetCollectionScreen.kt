@@ -67,7 +67,7 @@ class SetCollectionScreen(
     private val cardGap = 6
     private val rowGap = 9
     private val titleHeight = 13
-    private val cardHeight = 96
+    private val cardHeight = if (renderArmorMannequin) 126 else 104
     private val slotSize = 20
     private val inventorySlotSize = 23
     private val inventorySlotPitch = 24
