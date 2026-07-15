@@ -1,3 +1,4 @@
+import com.modrinth.minotaur.ModrinthExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.gradle.jvm.tasks.Jar
@@ -6,6 +7,7 @@ import org.gradle.language.jvm.tasks.ProcessResources
 plugins {
     kotlin("jvm") version "2.4.0" apply false
     id("net.fabricmc.fabric-loom") version "1.17.1" apply false
+    id("com.modrinth.minotaur") version "2.9.0" apply false
 }
 
 val targets = mapOf(
@@ -31,8 +33,23 @@ subprojects {
 
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "net.fabricmc.fabric-loom")
+    apply(plugin = "com.modrinth.minotaur")
 
     version = artifactVersion
+
+    extensions.configure<ModrinthExtension> {
+        projectId.set(providers.environmentVariable("MODRINTH_PROJECT_ID"))
+        versionNumber.set(artifactVersion)
+        versionName.set("SkyHUD $artifactVersion")
+        versionType.set("release")
+        uploadFile.set(tasks.named("jar"))
+        gameVersions.set(listOf(target.minecraft))
+        loaders.set(listOf("fabric"))
+        changelog.set(
+            providers.environmentVariable("MODRINTH_CHANGELOG")
+                .orElse("See the corresponding GitHub release for changes."),
+        )
+    }
 
     dependencies {
         add("minecraft", "com.mojang:minecraft:${target.minecraft}")
