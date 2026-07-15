@@ -6,6 +6,7 @@ import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.feature.sets.SetCollectionScreen
+import org.hypixelskyblockmods.skyhud.gui.OverlayMenuTransition
 import org.hypixelskyblockmods.skyhud.gui.OverlayTransitionGuard
 import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
 
@@ -17,15 +18,20 @@ object WardrobeController {
     private var pendingAction: PendingAction? = null
     private var showOriginalNext = false
     private var originalMenu: ChestMenu? = null
+    private val transition = OverlayMenuTransition("wardrobe")
 
     fun redirectIncoming(client: Minecraft, screen: Screen): Screen {
         if (screen === activeScreen) return screen
-        return if (onScreenOpened(client, screen)) activeScreen ?: screen else screen
+        if (onScreenOpened(client, screen)) return activeScreen ?: screen
+        val overlay = activeScreen
+        if (overlay != null && transition.retainIncoming(screen)) return overlay
+        return screen
     }
 
     fun onScreenOpened(client: Minecraft, screen: Screen): Boolean {
         if (!SkyHudConfigManager.config.huds.wardrobe.enabled) return false
         val target = WardrobeDetector.detect(screen) ?: return false
+        transition.onRecognized()
         if (originalMenu === target.menu) return false
         if (showOriginalNext) {
             showOriginalNext = false
@@ -55,7 +61,7 @@ object WardrobeController {
         if (ScreenCompat.currentScreen() === screen) {
             ScreenCompat.setScreen(overlay)
         }
-        client.execute(::advancePendingAction)
+        client.execute { advancePendingAction() }
         return true
     }
 
@@ -72,11 +78,12 @@ object WardrobeController {
             overlay = activeScreen ?: return
             if (ScreenCompat.currentScreen() !== overlay) ScreenCompat.setScreen(overlay)
         }
-        overlay.refreshBackingMenu(client.player?.containerMenu)
+        transition.tick(client, overlay)
+        if (transition.acceptsBackingUpdates()) overlay.refreshBackingMenu(client.player?.containerMenu)
     }
 
     private fun onOverlayClosed() {
-        OverlayTransitionGuard.clear(activeScreen)
+        transition.clear(activeScreen)
         activeScreen = null
         currentTarget = null
         pendingAction = null
@@ -84,30 +91,34 @@ object WardrobeController {
 
     private fun requestAction(page: Int, index: Int?) {
         pendingAction = PendingAction(page, index)
-        advancePendingAction()
+        if (!advancePendingAction()) transition.scheduleRefresh()
     }
 
-    private fun advancePendingAction() {
-        val action = pendingAction ?: return
-        val target = currentTarget ?: return
+    private fun advancePendingAction(): Boolean {
+        val action = pendingAction ?: return false
+        val target = currentTarget ?: return false
         val client = Minecraft.getInstance()
-        val player = client.player ?: return
-        if (player.containerMenu !== target.menu) return
+        val player = client.player ?: return false
+        if (player.containerMenu !== target.menu) return false
         if (target.page == action.page) {
             pendingAction = null
             action.index?.let { index ->
-                OverlayTransitionGuard.arm(activeScreen)
+                WardrobeRepository.sets.markSelected(action.page, index)
+                transition.scheduleRefresh()
+                transition.arm(activeScreen)
                 client.gameMode?.handleContainerInput(target.menu.containerId, 36 + index, 0, ContainerInput.PICKUP, player)
             }
-            return
+            return true
         }
         val navigationSlot = if (action.page > target.page) 53 else 45
-        OverlayTransitionGuard.arm(activeScreen)
+        transition.arm(activeScreen)
         client.gameMode?.handleContainerInput(target.menu.containerId, navigationSlot, 0, ContainerInput.PICKUP, player)
+        return true
     }
 
     private fun openOriginal() {
         showOriginalNext = true
+        transition.onRecognized()
         OverlayTransitionGuard.arm(activeScreen)
         Minecraft.getInstance().player?.connection?.sendCommand("wardrobe")
     }

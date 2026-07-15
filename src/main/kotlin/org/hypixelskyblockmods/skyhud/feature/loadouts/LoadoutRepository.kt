@@ -113,6 +113,7 @@ object LoadoutRepository {
 
     fun remember(page: Int, menu: ChestMenu) {
         ensureLoaded()
+        if (LoadoutLayout.iconSlots(page).any { menu.getSlot(it).item.isEmpty }) return
         val previous = pages[page]?.loadouts?.associateBy(CachedLoadout::id).orEmpty()
         val allRemembered = pages.values.flatMap(CachedLoadoutPage::loadouts)
         val loadouts = LoadoutLayout.iconSlots(page).mapIndexed { position, inventorySlot ->
@@ -194,6 +195,17 @@ object LoadoutRepository {
         if (!pageMatches(pages[page], cachedPage)) {
             pages[page] = cachedPage
             save()
+        }
+    }
+
+    fun markSelected(page: Int, inventorySlot: Int) {
+        ensureLoaded()
+        pages.replaceAll { cachedPageNumber, cachedPage ->
+            cachedPage.copy(
+                loadouts = cachedPage.loadouts.map { loadout ->
+                    loadout.copy(selected = cachedPageNumber == page && loadout.inventorySlot == inventorySlot)
+                },
+            )
         }
     }
 

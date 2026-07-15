@@ -22,7 +22,7 @@ object LoadoutDetector {
 
         if (menu.rowCount != 6 || totalPages !in 1..3 || page !in 1..totalPages) return null
         if (menu.slots.size < 90) return null
-        if (LoadoutLayout.iconSlots(page).none { !menu.getSlot(it).item.isEmpty }) return null
+        if (LoadoutLayout.iconSlots(page).any { menu.getSlot(it).item.isEmpty }) return null
 
         return LoadoutTarget(page, totalPages, menu)
     }

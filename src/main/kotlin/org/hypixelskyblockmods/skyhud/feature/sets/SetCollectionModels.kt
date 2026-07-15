@@ -66,6 +66,7 @@ class SetCollectionRepository(
 
     fun remember(page: Int, menu: ChestMenu) {
         ensureLoaded()
+        if ((36..44).any { menu.getSlot(it).item.isEmpty }) return
         val slots = (0 until 9).map { column ->
             val items = (0 until 4).map { row ->
                 menu.getSlot(row * 9 + column).item
@@ -93,6 +94,17 @@ class SetCollectionRepository(
         if (!pageMatches(pages[page], cachedPage)) {
             pages[page] = cachedPage
             save()
+        }
+    }
+
+    fun markSelected(page: Int, index: Int) {
+        ensureLoaded()
+        pages.replaceAll { cachedPageNumber, cachedPage ->
+            cachedPage.copy(
+                slots = cachedPage.slots.map { set ->
+                    set.copy(selected = cachedPageNumber == page && set.index == index)
+                },
+            )
         }
     }
 
@@ -188,7 +200,7 @@ object SetCollectionDetection {
 
         if (menu.rowCount != 6 || totalPages !in 1..3 || page !in 1..totalPages) return null
         if (menu.slots.size < 90) return null
-        if ((36..44).none { !menu.getSlot(it).item.isEmpty }) return null
+        if ((36..44).any { menu.getSlot(it).item.isEmpty }) return null
 
         return SetCollectionTarget(page, totalPages, menu)
     }
