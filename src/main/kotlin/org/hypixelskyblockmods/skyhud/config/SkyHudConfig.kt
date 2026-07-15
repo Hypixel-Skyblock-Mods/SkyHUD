@@ -80,8 +80,20 @@ class ThemeConfig {
     )
     @field:ConfigEditorColour
     @JvmField
-    var mainColor: ChromaColour = ChromaColour.fromStaticRGB(0x24, 0x31, 0xA0, 0xFF)
+    var mainColor: ChromaColour = defaultMainColor()
+
+    @field:ConfigOption(
+        name = "Reset Main Color",
+        desc = "Restore the main color to SkyHUD's default navy accent.",
+    )
+    @field:ConfigEditorButton(buttonText = "Reset")
+    @JvmField
+    @Transient
+    var resetMainColor = Runnable { mainColor = defaultMainColor() }
 }
+
+private fun defaultMainColor(): ChromaColour =
+    ChromaColour.fromStaticRGB(0x24, 0x31, 0xA0, 0xFF)
 
 class HudConfig {
     @field:ConfigOption(
