@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "skyhud",
+  "version": "${version}",
+  "name": "SkyHUD",
+  "description": "Modern interfaces for Hypixel SkyBlock storage and loadouts.",
+  "authors": [
+    "Hypixel-Skyblock-Mods"
+  ],
+  "contact": {
+    "sources": "https://github.com/Hypixel-Skyblock-Mods/SkyHUD"
+  },
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      {
+        "adapter": "kotlin",
+        "value": "org.hypixelskyblockmods.skyhud.SkyHudClient"
+      }
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "fabric-language-kotlin": ">=1.13.12+kotlin.2.4.0",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
