@@ -55,7 +55,7 @@ object ProfileItemCache {
         }
     }
 
-    fun encode(stack: ItemStack): String {
+    fun encode(stack: ItemStack): String = runCatching {
         if (stack.isEmpty) return ""
         val tag = ItemStack.CODEC.encodeStart(registryOps(), stack.copy())
             .resultOrPartial { error -> logger.warn("Could not encode cached item: $error") }
@@ -66,6 +66,9 @@ object ProfileItemCache {
             NbtIo.writeCompressed(root, output)
             Base64.getEncoder().encodeToString(output.toByteArray())
         }
+    }.getOrElse {
+        logger.warn("Could not encode cached item stack", it)
+        ""
     }
 
     fun decode(encoded: String): ItemStack {

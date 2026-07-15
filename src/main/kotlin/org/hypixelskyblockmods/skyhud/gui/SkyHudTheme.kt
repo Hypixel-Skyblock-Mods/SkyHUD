@@ -22,7 +22,9 @@ object SkyHudTheme {
     val BORDER: Int
         get() = if (transparent) 0xD0292929.toInt() else 0xFF292929.toInt()
     val PRIMARY: Int
-        get() = 0xFF000000.toInt() or (SkyHudConfigManager.config.theme.mainColor.getEffectiveColourRGB() and 0x00FFFFFF)
+        get() = runCatching {
+            0xFF000000.toInt() or (SkyHudConfigManager.config.theme.mainColor.getEffectiveColourRGB() and 0x00FFFFFF)
+        }.getOrDefault(0xFF1E3A69.toInt())
     val PRIMARY_HOVER: Int
         get() = brighten(PRIMARY, 1.3f)
     const val TEXT = 0xFFF4F6FA.toInt()
