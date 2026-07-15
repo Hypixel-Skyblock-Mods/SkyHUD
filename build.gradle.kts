@@ -69,6 +69,11 @@ subprojects {
         uploadFile.set(tasks.named("jar"))
         gameVersions.set(listOf(target.minecraft))
         loaders.set(listOf("fabric"))
+        dependencies {
+            required.project("P7dR8mSH") // Fabric API
+            required.project("Ha28R6CL") // Fabric Language Kotlin
+            optional.project("mOgUt4GM") // Mod Menu
+        }
         changelog.set(
             providers.environmentVariable("MODRINTH_CHANGELOG")
                 .orElse("See the corresponding GitHub release for changes."),
