@@ -11,6 +11,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: release
     env:
       MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
       MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
