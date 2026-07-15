@@ -27,11 +27,12 @@ inventory menus with clean, modern interfaces.
 
 ### Loadouts
 
-- Replaces Hypixel's new `(n/n) Loadouts` pages with three loadouts per row.
-- Displays each loadout name above a nine-slot armor, equipment, and pet strip.
+- Replaces Hypixel's new `(n/n) Loadouts` pages with five loadouts per row.
+- Displays armor on a player mannequin, equipment beside it, and the selected pet in the top-left.
 - Remembers details after a loadout has been selected and outlines only the
   equipped loadout.
-- Supports loadout and item search, locked slots, and validated page navigation.
+- Supports native item tooltips, loadout and item search, locked slots, validated
+  page navigation, and a pen button that opens Hypixel's loadout editor.
 
 ### Equipment Sets
 
