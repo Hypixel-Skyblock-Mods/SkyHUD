@@ -58,6 +58,8 @@ data class CachedEnderChestPage(
 object EnderChestRepository {
     private val pages = sortedMapOf<StoragePageKey, CachedEnderChestPage>()
     private val availablePages = sortedSetOf<StoragePageKey>()
+    var hasDiscoveredOverview: Boolean = false
+        private set
 
     fun remember(page: Int, menu: ChestMenu) {
         remember(StoragePageKey.enderChest(page), menu)
@@ -80,6 +82,7 @@ object EnderChestRepository {
     }
 
     fun rememberOverview(menu: ChestMenu) {
+        hasDiscoveredOverview = true
         (1..9).forEach { rememberOverviewSlot(StoragePageKey.enderChest(it), menu) }
         (1..18).forEach { rememberOverviewSlot(StoragePageKey.backpack(it), menu) }
     }
@@ -88,11 +91,12 @@ object EnderChestRepository {
 
     fun page(key: StoragePageKey): CachedEnderChestPage? = pages[key]
 
-    fun allPages(): List<StoragePageKey> = (availablePages + pages.keys).sorted()
+    fun allPages(): List<StoragePageKey> = StoragePagePreferences.order(availablePages + pages.keys)
 
     fun clear() {
         pages.clear()
         availablePages.clear()
+        hasDiscoveredOverview = false
     }
 
     private fun rememberOverviewSlot(key: StoragePageKey, menu: ChestMenu) {

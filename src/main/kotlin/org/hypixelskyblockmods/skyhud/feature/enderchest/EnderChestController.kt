@@ -7,18 +7,31 @@ import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
 
 object EnderChestController {
     private var activeScreen: EnderChestScreen? = null
+    private var pendingOverviewReturn: StoragePageKey? = null
+    private var overviewRequestInFlight = false
 
     fun onScreenOpened(client: Minecraft, screen: Screen): Boolean {
         if (!SkyHudConfigManager.config.huds.enderChest.enabled) return false
         val target = EnderChestDetector.detect(screen) ?: return false
+        var commandAfterReplacement: String? = null
         when (target) {
-            is EnderChestTarget.Overview -> EnderChestRepository.rememberOverview(target.menu)
+            is EnderChestTarget.Overview -> {
+                EnderChestRepository.rememberOverview(target.menu)
+                commandAfterReplacement = pendingOverviewReturn?.navigationCommand
+                pendingOverviewReturn = null
+                overviewRequestInFlight = false
+            }
             is EnderChestTarget.Page -> {
                 val total = target.totalEnderChestPages
                 if (total != null) {
                     EnderChestRepository.rememberEnderChest(target.key.number, total, target.menu)
                 } else {
                     EnderChestRepository.remember(target.key, target.menu)
+                }
+                if (!EnderChestRepository.hasDiscoveredOverview && !overviewRequestInFlight) {
+                    pendingOverviewReturn = target.key
+                    overviewRequestInFlight = true
+                    commandAfterReplacement = "storage"
                 }
             }
         }
@@ -32,6 +45,7 @@ object EnderChestController {
             if (ScreenCompat.currentScreen() === screen) {
                 ScreenCompat.setScreen(overlay)
             }
+            commandAfterReplacement?.let { client.player?.connection?.sendCommand(it) }
         }
         return true
     }
