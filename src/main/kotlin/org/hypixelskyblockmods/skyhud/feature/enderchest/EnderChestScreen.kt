@@ -12,6 +12,7 @@ import net.minecraft.world.item.ItemStack
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 
 class EnderChestScreen(
+    private val editOriginal: () -> Unit,
     private val closed: () -> Unit,
 ) : Screen(Component.literal("SkyHUD Storage")) {
     private data class PageBounds(
@@ -138,7 +139,18 @@ class EnderChestScreen(
             SkyHudTheme.PRIMARY,
         )
         graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.PRIMARY)
-        graphics.text(font, "STORAGE", panelX + 12, panelY + 8, SkyHudTheme.TEXT, false)
+        val editHovered = mouseX in (panelX + 7) until (panelX + 40) && mouseY in (panelY + 4) until (panelY + 20)
+        SkyHudTheme.outlinedRoundedRect(
+            graphics,
+            panelX + 7,
+            panelY + 4,
+            33,
+            16,
+            if (editHovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+            SkyHudTheme.PRIMARY,
+        )
+        graphics.text(font, "EDIT", panelX + 12, panelY + 8, SkyHudTheme.TEXT, false)
+        graphics.text(font, "STORAGE", panelX + 47, panelY + 8, SkyHudTheme.TEXT, false)
 
         val searchWidth = 140
         SkyHudTheme.outlinedRoundedRect(
@@ -434,6 +446,14 @@ class EnderChestScreen(
         if (click.button() !in 0..1) return false
         val mouseX = click.x.toInt()
         val mouseY = click.y.toInt()
+        if (
+            click.button() == 0 &&
+            mouseX in (panelX() + 7) until (panelX() + 40) &&
+            mouseY in (panelY() + 4) until (panelY() + 20)
+        ) {
+            editOriginal()
+            return true
+        }
 
         val scrollbarX = panelX() + panelWidth() - 9
         val scrollbarTop = panelY() + headerHeight + 5
