@@ -207,7 +207,8 @@ class SetCollectionScreen(
         val cardY = y + titleHeight
         val empty = set?.items?.all(ItemStack::isEmpty) != false
         val locked = set?.locked == true
-        val hovered = mouseX in x until (x + width) && mouseY in cardY until (cardY + cardHeight)
+        val hovered = mouseInContentViewport(mouseX, mouseY) &&
+            mouseX in x until (x + width) && mouseY in cardY until (cardY + cardHeight)
         SkyHudTheme.roundedRect(
             graphics,
             x,
@@ -262,7 +263,8 @@ class SetCollectionScreen(
         val buttonWidth = (font.width(label) + 12).coerceAtMost(width - 12)
         val buttonX = x + (width - buttonWidth) / 2
         val buttonY = cardY + (cardHeight - 20) / 2
-        val hovered = mouseX in buttonX until (buttonX + buttonWidth) && mouseY in buttonY until (buttonY + 20)
+        val hovered = mouseInContentViewport(mouseX, mouseY) &&
+            mouseX in buttonX until (buttonX + buttonWidth) && mouseY in buttonY until (buttonY + 20)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
             buttonX,
@@ -287,7 +289,8 @@ class SetCollectionScreen(
         mouseX: Int,
         mouseY: Int,
     ) {
-        val hovered = mouseX in x until (x + slotSize) && mouseY in y until (y + slotSize)
+        val hovered = mouseInContentViewport(mouseX, mouseY) &&
+            mouseX in x until (x + slotSize) && mouseY in y until (y + slotSize)
         graphics.fill(
             x,
             y,
@@ -360,7 +363,7 @@ class SetCollectionScreen(
             }
             return
         }
-        if (mouseX !in left until right || mouseY !in top until bottom) return
+        if (!mouseInContentViewport(mouseX, mouseY) || mouseX !in left until right || mouseY !in top until bottom) return
         val armorIndex = ((mouseY - top) * 4 / (bottom - top).coerceAtLeast(1)).coerceIn(0, 3)
         set.items.getOrNull(armorIndex)?.takeUnless(ItemStack::isEmpty)?.let {
             graphics.setTooltipForNextFrame(font, it, mouseX, mouseY)
@@ -424,6 +427,8 @@ class SetCollectionScreen(
             updateScrollFromMouse(mouseY, viewportTop, viewportBottom)
             return true
         }
+
+        if (!mouseInContentViewport(mouseX, mouseY)) return false
 
         val bounds = setBounds.firstOrNull {
             mouseX in it.x until (it.x + it.width) && mouseY in it.y until (it.y + it.height)
@@ -493,6 +498,10 @@ class SetCollectionScreen(
 
     private fun headerEditX(panelX: Int): Int =
         panelX + 8 + font.width(heading) + 7
+
+    private fun mouseInContentViewport(mouseX: Int, mouseY: Int): Boolean =
+        mouseX in (panelX() + 2) until (panelX() + panelWidth() - 2) &&
+            mouseY in (panelY() + headerHeight + 6) until (panelY() + panelHeight() - 7)
 
     override fun onClose() {
         closed()

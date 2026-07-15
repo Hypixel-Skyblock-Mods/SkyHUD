@@ -310,7 +310,8 @@ class EnderChestScreen(
         val gridY = y + pageTitleHeight
         val gridHeight = rows * slotPitch
         val active = key == currentPage
-        val hovered = mouseX in x until (x + pageWidth) && mouseY in y until (gridY + gridHeight)
+        val hovered = mouseInPageViewport(mouseX, mouseY) &&
+            mouseX in x until (x + pageWidth) && mouseY in y until (gridY + gridHeight)
 
         if (active) {
             drawOutline(graphics, x - 2, gridY - 2, pageWidth + 4, gridHeight + 4, SkyHudTheme.PRIMARY_HOVER, 1)
@@ -320,7 +321,8 @@ class EnderChestScreen(
         val favorite = StoragePagePreferences.isFavorite(key)
         val star = if (favorite) "★" else "☆"
         val starX = x + pageWidth - 10
-        val starHovered = mouseX in (starX - 1) until (starX + 10) && mouseY in y until (y + 11)
+        val starHovered = mouseInPageViewport(mouseX, mouseY) &&
+            mouseX in (starX - 1) until (starX + 10) && mouseY in y until (y + 11)
         graphics.text(
             font,
             star,
@@ -341,7 +343,8 @@ class EnderChestScreen(
             val stack = cached?.items?.getOrNull(index) ?: ItemStack.EMPTY
             val slotX = x + (index % 9) * slotPitch
             val slotY = gridY + (index / 9) * slotPitch
-            val slotHovered = mouseX in slotX until (slotX + slotSize) && mouseY in slotY until (slotY + slotSize)
+            val slotHovered = mouseInPageViewport(mouseX, mouseY) &&
+                mouseX in slotX until (slotX + slotSize) && mouseY in slotY until (slotY + slotSize)
             graphics.fill(
                 slotX,
                 slotY,
@@ -530,6 +533,8 @@ class EnderChestScreen(
             return true
         }
 
+        if (!mouseInPageViewport(mouseX, mouseY)) return false
+
         val card = pageBounds.firstOrNull {
             mouseX in it.x until (it.x + it.width) && mouseY in it.y until (it.y + it.height)
         } ?: return false
@@ -647,6 +652,10 @@ class EnderChestScreen(
 
     private fun farmingToolkitX(panelX: Int, panelWidth: Int, searchWidth: Int): Int =
         searchX(panelX, panelWidth, searchWidth) - 4 - toolkitButtonSize - 5
+
+    private fun mouseInPageViewport(mouseX: Int, mouseY: Int): Boolean =
+        mouseX in (panelX() + 2) until (panelX() + panelWidth() - 2) &&
+            mouseY in (panelY() + headerHeight + 5) until (panelY() + panelHeight() - inventoryHeight - 5)
 
     private fun inventoryPanelWidth(): Int = 9 * inventorySlotPitch + 20
 

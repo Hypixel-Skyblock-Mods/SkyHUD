@@ -215,7 +215,8 @@ class LoadoutScreen(
         val empty = loadout?.empty == true
         val locked = loadout?.locked == true
         val selected = loadout?.selected == true
-        val bodyHovered = mouseX in x until (x + width) && mouseY in cardY until (cardY + cardHeight)
+        val bodyHovered = mouseInContentViewport(mouseX, mouseY) &&
+            mouseX in x until (x + width) && mouseY in cardY until (cardY + cardHeight)
         val fill = when {
             loadout == null || empty || locked -> SkyHudTheme.EMPTY_SURFACE
             bodyHovered -> SkyHudTheme.SURFACE_RAISED
@@ -225,7 +226,8 @@ class LoadoutScreen(
         if (selected) drawOutline(graphics, x - 1, cardY - 1, width + 2, cardHeight + 2, SkyHudTheme.PRIMARY_HOVER)
 
         val name = loadout?.name ?: "LOADOUT ${card.id}"
-        val nameHovered = loadout != null && !locked && mouseX in x until (x + width) && mouseY in y until cardY
+        val nameHovered = loadout != null && !locked && mouseInContentViewport(mouseX, mouseY) &&
+            mouseX in x until (x + width) && mouseY in y until cardY
         graphics.text(
             font,
             clipText(name, width - 2),
@@ -291,7 +293,8 @@ class LoadoutScreen(
         val buttonWidth = (font.width(label) + 12).coerceAtMost(width - 12)
         val buttonX = x + (width - buttonWidth) / 2
         val buttonY = cardY + (cardHeight - 20) / 2
-        val hovered = mouseX in buttonX until (buttonX + buttonWidth) && mouseY in buttonY until (buttonY + 20)
+        val hovered = mouseInContentViewport(mouseX, mouseY) &&
+            mouseX in buttonX until (buttonX + buttonWidth) && mouseY in buttonY until (buttonY + 20)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
             buttonX,
@@ -312,7 +315,8 @@ class LoadoutScreen(
         mouseX: Int,
         mouseY: Int,
     ) {
-        val hovered = mouseX in x until (x + slotSize) && mouseY in y until (y + slotSize)
+        val hovered = mouseInContentViewport(mouseX, mouseY) &&
+            mouseX in x until (x + slotSize) && mouseY in y until (y + slotSize)
         graphics.fill(
             x,
             y,
@@ -338,7 +342,8 @@ class LoadoutScreen(
         mouseX: Int,
         mouseY: Int,
     ) {
-        val hovered = enabled && mouseX in x until (x + editSize) && mouseY in y until (y + editSize)
+        val hovered = enabled && mouseInContentViewport(mouseX, mouseY) &&
+            mouseX in x until (x + editSize) && mouseY in y until (y + editSize)
         SkyHudTheme.roundedRect(
             graphics,
             x,
@@ -411,7 +416,7 @@ class LoadoutScreen(
             }
             return
         }
-        if (mouseX !in left until right || mouseY !in top until bottom) return
+        if (!mouseInContentViewport(mouseX, mouseY) || mouseX !in left until right || mouseY !in top until bottom) return
         val armorIndex = ((mouseY - top) * 4 / (bottom - top).coerceAtLeast(1)).coerceIn(0, 3)
         loadout.armor.getOrNull(armorIndex)?.takeUnless(ItemStack::isEmpty)?.let {
             graphics.setTooltipForNextFrame(font, it, mouseX, mouseY)
@@ -479,6 +484,8 @@ class LoadoutScreen(
             updateScrollFromMouse(mouseY, viewportTop, viewportBottom)
             return true
         }
+
+        if (!mouseInContentViewport(mouseX, mouseY)) return false
 
         val bounds = loadoutBounds.firstOrNull {
             mouseX in it.x until (it.x + it.width) && mouseY in it.y until (it.y + it.height)
@@ -574,6 +581,10 @@ class LoadoutScreen(
 
     private fun headerEditX(panelX: Int, heading: String): Int =
         panelX + 8 + font.width(heading) + 7
+
+    private fun mouseInContentViewport(mouseX: Int, mouseY: Int): Boolean =
+        mouseX in (panelX() + 2) until (panelX() + panelWidth() - 2) &&
+            mouseY in (panelY() + headerHeight + 6) until (panelY() + panelHeight() - 7)
 
     override fun onClose() {
         closed()
