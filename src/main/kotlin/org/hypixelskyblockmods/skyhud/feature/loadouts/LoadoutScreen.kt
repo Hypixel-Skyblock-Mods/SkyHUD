@@ -356,7 +356,7 @@ class LoadoutScreen(
                 level,
                 minecraft.playerSkinRenderCache(),
                 minecraft.player?.skin ?: ClientMannequin.DEFAULT_SKIN,
-            )
+            ).also { it.id = -100_000 - loadout.id }
         }
         val armorSlots = listOf(
             EquipmentSlot.HEAD,
