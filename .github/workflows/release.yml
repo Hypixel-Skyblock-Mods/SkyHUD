@@ -1,4 +1,4 @@
-name: Release
+name: Push to Modrinth
 
 on:
   push:
@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   release:
+    name: Push to Modrinth
     runs-on: [self-hosted, Linux, X64, wicked-game-01, skyhud]
     environment: release
     env:
@@ -68,11 +69,24 @@ jobs:
           set -euo pipefail
 
           versions_file="$RUNNER_TEMP/modrinth-versions.json"
-          curl --fail-with-body --silent --show-error \
+          http_status="$(curl --silent --show-error --write-out '%{http_code}' \
             --header "Authorization: $MODRINTH_TOKEN" \
             --header "User-Agent: Hypixel-Skyblock-Mods/SkyHUD GitHub Actions" \
             "https://api.modrinth.com/v2/project/$MODRINTH_PROJECT_ID/version" \
-            --output "$versions_file"
+            --output "$versions_file")"
+
+          case "$http_status" in
+            200)
+              ;;
+            404)
+              echo "The project version list is not visible yet; treating this as its first publish."
+              echo '[]' > "$versions_file"
+              ;;
+            *)
+              echo "::error::Modrinth version lookup failed with HTTP $http_status."
+              exit 1
+              ;;
+          esac
 
           echo "MODRINTH_VERSIONS_FILE=$versions_file" >> "$GITHUB_ENV"
 
