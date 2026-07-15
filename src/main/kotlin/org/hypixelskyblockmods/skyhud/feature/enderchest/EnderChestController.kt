@@ -11,7 +11,17 @@ object EnderChestController {
     fun onScreenOpened(client: Minecraft, screen: Screen) {
         if (!SkyHudConfigManager.config.huds.enderChest.enabled) return
         val target = EnderChestDetector.detect(screen) ?: return
-        EnderChestRepository.remember(target.page, target.menu)
+        when (target) {
+            is EnderChestTarget.Overview -> EnderChestRepository.rememberOverview(target.menu)
+            is EnderChestTarget.Page -> {
+                val total = target.totalEnderChestPages
+                if (total != null) {
+                    EnderChestRepository.rememberEnderChest(target.key.number, total, target.menu)
+                } else {
+                    EnderChestRepository.remember(target.key, target.menu)
+                }
+            }
+        }
 
         val overlay = activeScreen ?: EnderChestScreen(::onOverlayClosed).also {
             activeScreen = it

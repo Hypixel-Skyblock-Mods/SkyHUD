@@ -14,9 +14,9 @@ import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 
 class EnderChestScreen(
     private val closed: () -> Unit,
-) : Screen(Component.literal("SkyHUD Ender Chest")) {
+) : Screen(Component.literal("SkyHUD Storage")) {
     private data class PageBounds(
-        val page: Int,
+        val key: StoragePageKey,
         val x: Int,
         val y: Int,
         val width: Int,
@@ -24,48 +24,77 @@ class EnderChestScreen(
         val loaded: Boolean,
     )
 
-    private var currentPage = 1
-    private var totalPages = 9
+    private data class InventorySlotBounds(
+        val menuSlot: Int,
+        val x: Int,
+        val y: Int,
+    )
+
+    private var currentPage: StoragePageKey? = null
     private var backingMenu: ChestMenu? = null
     private var searchText = ""
     private var scroll = 0.0
     private var maxScroll = 0.0
     private var pageBounds = emptyList<PageBounds>()
+    private var inventorySlotBounds = emptyList<InventorySlotBounds>()
     private var draggingScrollbar = false
 
-    private val headerHeight = 54
+    private val panelMaxWidth = 590
+    private val panelMaxHeight = 430
+    private val headerHeight = 42
+    private val inventoryHeight = 104
     private val pageColumns = 3
-    private val pageWidth = 230
-    private val pageGapHorizontal = 28
-    private val pageGapVertical = 30
-    private val pageTitleHeight = 19
-    private val slotSize = 22
-    private val slotGap = 4
-    private val itemSize = 16
+    private val pageWidth = 162
+    private val pageGapHorizontal = 20
+    private val pageGapVertical = 18
+    private val pageTitleHeight = 15
+    private val slotSize = 18
+    private val slotPitch = 18
 
     fun bind(target: EnderChestTarget) {
-        currentPage = target.page
-        totalPages = target.totalPages
         backingMenu = target.menu
-        EnderChestRepository.remember(target.page, target.menu)
+        currentPage = when (target) {
+            is EnderChestTarget.Overview -> {
+                EnderChestRepository.rememberOverview(target.menu)
+                null
+            }
+
+            is EnderChestTarget.Page -> {
+                val total = target.totalEnderChestPages
+                if (total != null) {
+                    EnderChestRepository.rememberEnderChest(target.key.number, total, target.menu)
+                } else {
+                    EnderChestRepository.remember(target.key, target.menu)
+                }
+                target.key
+            }
+        }
+        scroll = 0.0
     }
 
     fun refreshBackingMenu(menu: AbstractContainerMenu?) {
         val chestMenu = menu as? ChestMenu ?: return
         if (chestMenu !== backingMenu) return
-        EnderChestRepository.remember(currentPage, chestMenu)
+        val key = currentPage
+        if (key == null) {
+            EnderChestRepository.rememberOverview(chestMenu)
+        } else {
+            EnderChestRepository.remember(key, chestMenu)
+        }
     }
 
     override fun init() {
         super.init()
-        val searchWidth = minOf(240, width / 3)
+        val panelX = panelX()
+        val panelY = panelY()
+        val searchWidth = 154
         val search = EditBox(
             font,
-            width - searchWidth - 24,
-            18,
+            panelX + panelWidth() - searchWidth - 15,
+            panelY + 11,
             searchWidth,
             20,
-            Component.literal("Search Ender Chest"),
+            Component.literal("Search Storage"),
         )
         search.value = searchText
         search.setHint(Component.literal("Search items..."))
@@ -85,72 +114,105 @@ class EnderChestScreen(
         mouseY: Int,
         delta: Float,
     ) {
-        graphics.fill(0, 0, width, height, SkyHudTheme.BACKGROUND)
-        graphics.fill(0, 0, width, headerHeight, 0xFF101010.toInt())
-        graphics.fill(0, headerHeight - 1, width, headerHeight, SkyHudTheme.PRIMARY)
+        val panelX = panelX()
+        val panelY = panelY()
+        val panelWidth = panelWidth()
+        val panelHeight = panelHeight()
+        val panelBottom = panelY + panelHeight
+        val inventoryTop = panelBottom - inventoryHeight
 
-        graphics.text(font, "ENDER CHEST", 24, 23, SkyHudTheme.TEXT, false)
-
-        val searchWidth = minOf(240, width / 3)
+        graphics.fill(0, 0, width, height, 0x70000000)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
-            width - searchWidth - 30,
-            13,
-            searchWidth + 12,
-            30,
+            panelX,
+            panelY,
+            panelWidth,
+            panelHeight,
+            0xF20D0D0D.toInt(),
+            SkyHudTheme.PRIMARY,
+        )
+        graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.PRIMARY)
+        graphics.text(font, "STORAGE", panelX + 15, panelY + 17, SkyHudTheme.TEXT, false)
+
+        val searchWidth = 154
+        SkyHudTheme.outlinedRoundedRect(
+            graphics,
+            panelX + panelWidth - searchWidth - 20,
+            panelY + 7,
+            searchWidth + 10,
+            28,
             SkyHudTheme.SURFACE,
             SkyHudTheme.BORDER,
         )
 
-        drawPages(graphics, mouseX, mouseY)
-        drawScrollbar(graphics, mouseX, mouseY)
+        drawPages(graphics, mouseX, mouseY, panelX, panelY, panelWidth, inventoryTop)
+        drawInventory(graphics, mouseX, mouseY, panelX, panelWidth, inventoryTop)
         super.extractRenderState(graphics, mouseX, mouseY, delta)
+
+        val carried = backingMenu?.carried
+        if (carried != null && !carried.isEmpty) {
+            graphics.item(carried, mouseX - 8, mouseY - 8)
+            graphics.itemDecorations(font, carried, mouseX - 8, mouseY - 8)
+        }
     }
 
-    private fun drawPages(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        val viewportTop = headerHeight + 16
-        val viewportBottom = height - 16
+    private fun drawPages(
+        graphics: GuiGraphicsExtractor,
+        mouseX: Int,
+        mouseY: Int,
+        panelX: Int,
+        panelY: Int,
+        panelWidth: Int,
+        inventoryTop: Int,
+    ) {
+        val viewportTop = panelY + headerHeight + 10
+        val viewportBottom = inventoryTop - 10
         val viewportHeight = (viewportBottom - viewportTop).coerceAtLeast(1)
-        val contentWidth = pageColumns * pageWidth + (pageColumns - 1) * pageGapHorizontal
-        val startX = (width - contentWidth) / 2
-        val visiblePages = (1..totalPages).filter(::pageMatchesSearch)
-        val visibleRows = visibleRowCount()
-        val pageHeight = pageHeight(visibleRows)
-        val rows = ceil(visiblePages.size / pageColumns.toDouble()).toInt()
+        val pages = EnderChestRepository.allPages().filter(::pageMatchesSearch)
+        val visibleRows = visibleRowCount(pages)
+        val pageHeight = pageTitleHeight + visibleRows * slotPitch
+        val rows = ceil(pages.size / pageColumns.toDouble()).toInt()
         val contentHeight = rows * pageHeight + (rows - 1).coerceAtLeast(0) * pageGapVertical
         maxScroll = (contentHeight - viewportHeight).coerceAtLeast(0).toDouble()
         scroll = scroll.coerceIn(0.0, maxScroll)
 
-        graphics.enableScissor(0, viewportTop, width, viewportBottom)
-        val bounds = ArrayList<PageBounds>(visiblePages.size)
-        visiblePages.forEachIndexed { index, page ->
-            val column = index % pageColumns
-            val row = index / pageColumns
-            val x = startX + column * (pageWidth + pageGapHorizontal)
-            val y = viewportTop + row * (pageHeight + pageGapVertical) - scroll.toInt()
-            val cached = EnderChestRepository.page(page)
-            drawPage(graphics, cached, page, x, y, visibleRows, mouseX, mouseY)
-            bounds += PageBounds(page, x, y, pageWidth, pageHeight, cached != null)
+        val contentWidth = pageColumns * pageWidth + (pageColumns - 1) * pageGapHorizontal
+        val startX = panelX + (panelWidth - contentWidth) / 2
+        graphics.enableScissor(panelX + 2, viewportTop, panelX + panelWidth - 2, viewportBottom)
+        val bounds = ArrayList<PageBounds>(pages.size)
+        pages.forEachIndexed { index, key ->
+            val x = startX + (index % pageColumns) * (pageWidth + pageGapHorizontal)
+            val y = viewportTop + (index / pageColumns) * (pageHeight + pageGapVertical) - scroll.toInt()
+            val cached = EnderChestRepository.page(key)
+            drawPage(graphics, key, cached, x, y, visibleRows, mouseX, mouseY)
+            bounds += PageBounds(key, x, y, pageWidth, pageHeight, cached != null)
         }
         graphics.disableScissor()
         pageBounds = bounds
 
-        if (visiblePages.isEmpty()) {
+        if (pages.isEmpty()) {
+            val message = if (searchText.isBlank()) {
+                "Open Storage to discover your pages"
+            } else {
+                "No storage items match '$searchText'"
+            }
             graphics.text(
                 font,
-                "No Ender Chest items match ‘$searchText’",
-                width / 2 - font.width("No Ender Chest items match ‘$searchText’") / 2,
-                viewportTop + 30,
+                message,
+                panelX + (panelWidth - font.width(message)) / 2,
+                viewportTop + 24,
                 SkyHudTheme.TEXT_MUTED,
                 false,
             )
         }
+
+        drawScrollbar(graphics, mouseX, mouseY, panelX + panelWidth - 9, viewportTop, viewportBottom)
     }
 
     private fun drawPage(
         graphics: GuiGraphicsExtractor,
+        key: StoragePageKey,
         cached: CachedEnderChestPage?,
-        page: Int,
         x: Int,
         y: Int,
         visibleRows: Int,
@@ -158,40 +220,25 @@ class EnderChestScreen(
         mouseY: Int,
     ) {
         val gridY = y + pageTitleHeight
-        val gridHeight = gridHeight(visibleRows)
-        val active = page == currentPage
+        val gridHeight = visibleRows * slotPitch
+        val active = key == currentPage
         val hovered = mouseX in x until (x + pageWidth) && mouseY in y until (gridY + gridHeight)
 
         if (active) {
-            drawPageOutline(
-                graphics,
-                x - 4,
-                gridY - 4,
-                pageWidth + 8,
-                gridHeight + 8,
-                SkyHudTheme.PRIMARY_HOVER,
-            )
+            drawOutline(graphics, x - 3, gridY - 3, pageWidth + 6, gridHeight + 6, SkyHudTheme.PRIMARY_HOVER, 2)
         }
+        graphics.text(font, key.displayName, x, y + 2, SkyHudTheme.TEXT, false)
 
-        graphics.text(font, "PAGE $page", x, y + 2, SkyHudTheme.TEXT, false)
-
-        if (cached == null) {
-            drawUnopenedPage(graphics, x, gridY, gridHeight, hovered)
-            return
-        }
-
-        val queryActive = searchText.isNotBlank()
-        val itemInset = (slotSize - itemSize) / 2
         repeat(visibleRows * 9) { index ->
-            val stack = cached.items.getOrNull(index) ?: ItemStack.EMPTY
-            val slotX = x + (index % 9) * (slotSize + slotGap)
-            val slotY = gridY + (index / 9) * (slotSize + slotGap)
+            val stack = cached?.items?.getOrNull(index) ?: ItemStack.EMPTY
+            val slotX = x + (index % 9) * slotPitch
+            val slotY = gridY + (index / 9) * slotPitch
             val slotHovered = mouseX in slotX until (slotX + slotSize) && mouseY in slotY until (slotY + slotSize)
             graphics.fill(
                 slotX,
                 slotY,
-                slotX + slotSize,
-                slotY + slotSize,
+                slotX + slotSize - 1,
+                slotY + slotSize - 1,
                 when {
                     slotHovered -> SkyHudTheme.SLOT_HOVER
                     stack.isEmpty -> SkyHudTheme.SLOT
@@ -199,89 +246,118 @@ class EnderChestScreen(
                 },
             )
             if (!stack.isEmpty) {
-                val itemX = slotX + itemInset
-                val itemY = slotY + itemInset
-                graphics.item(stack, itemX, itemY)
-                graphics.itemDecorations(font, stack, itemX, itemY)
-                if (queryActive && itemMatches(stack)) {
-                    drawSlotOutline(graphics, slotX, slotY, slotSize, SkyHudTheme.PRIMARY_HOVER)
+                graphics.item(stack, slotX + 1, slotY + 1)
+                graphics.itemDecorations(font, stack, slotX + 1, slotY + 1)
+                if (searchText.isNotBlank() && itemMatches(stack)) {
+                    drawOutline(graphics, slotX, slotY, slotSize - 1, slotSize - 1, SkyHudTheme.PRIMARY_HOVER, 1)
                 }
-                if (slotHovered) {
-                    graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
-                }
+                if (slotHovered) graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
             }
+        }
+
+        if (cached == null) {
+            val label = "OPEN THIS PAGE"
+            val labelWidth = font.width(label) + 16
+            val buttonX = x + (pageWidth - labelWidth) / 2
+            val buttonY = gridY + (gridHeight - 22) / 2
+            SkyHudTheme.outlinedRoundedRect(
+                graphics,
+                buttonX,
+                buttonY,
+                labelWidth,
+                22,
+                if (hovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
+                SkyHudTheme.PRIMARY,
+            )
+            graphics.text(font, label, buttonX + 8, buttonY + 7, SkyHudTheme.TEXT, false)
         }
     }
 
-    private fun drawUnopenedPage(
+    private fun drawInventory(
         graphics: GuiGraphicsExtractor,
-        x: Int,
-        gridY: Int,
-        gridHeight: Int,
-        hovered: Boolean,
+        mouseX: Int,
+        mouseY: Int,
+        panelX: Int,
+        panelWidth: Int,
+        inventoryTop: Int,
     ) {
-        val buttonX = x + 38
-        val buttonY = gridY + (gridHeight - 30) / 2
-        val buttonWidth = pageWidth - 76
-        SkyHudTheme.outlinedRoundedRect(
-            graphics,
-            buttonX,
-            buttonY,
-            buttonWidth,
-            30,
-            if (hovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
-            if (hovered) 0xFF5479B5.toInt() else SkyHudTheme.PRIMARY,
-        )
-        val label = "OPEN THIS PAGE"
-        graphics.text(
-            font,
-            label,
-            buttonX + (buttonWidth - font.width(label)) / 2,
-            buttonY + 11,
-            SkyHudTheme.TEXT,
-            false,
-        )
+        graphics.fill(panelX + 1, inventoryTop, panelX + panelWidth - 1, inventoryTop + 1, SkyHudTheme.BORDER)
+        graphics.text(font, "INVENTORY", panelX + 15, inventoryTop + 10, SkyHudTheme.TEXT_MUTED, false)
+
+        val menu = backingMenu ?: return
+        val inventoryWidth = 9 * slotPitch
+        val startX = panelX + (panelWidth - inventoryWidth) / 2
+        val mainY = inventoryTop + 24
+        val playerStart = menu.rowCount * 9
+        val bounds = ArrayList<InventorySlotBounds>(36)
+
+        repeat(27) { index ->
+            val menuSlot = playerStart + index
+            val x = startX + (index % 9) * slotPitch
+            val y = mainY + (index / 9) * slotPitch
+            drawInventorySlot(graphics, menu, menuSlot, x, y, mouseX, mouseY)
+            bounds += InventorySlotBounds(menuSlot, x, y)
+        }
+        repeat(9) { index ->
+            val menuSlot = playerStart + 27 + index
+            val x = startX + index * slotPitch
+            val y = mainY + 3 * slotPitch + 5
+            drawInventorySlot(graphics, menu, menuSlot, x, y, mouseX, mouseY)
+            bounds += InventorySlotBounds(menuSlot, x, y)
+        }
+        inventorySlotBounds = bounds
     }
 
-    private fun drawPageOutline(
+    private fun drawInventorySlot(
         graphics: GuiGraphicsExtractor,
+        menu: ChestMenu,
+        menuSlot: Int,
         x: Int,
         y: Int,
-        width: Int,
-        height: Int,
-        color: Int,
+        mouseX: Int,
+        mouseY: Int,
     ) {
-        val thickness = 2
-        graphics.fill(x, y, x + width, y + thickness, color)
-        graphics.fill(x, y + height - thickness, x + width, y + height, color)
-        graphics.fill(x, y, x + thickness, y + height, color)
-        graphics.fill(x + width - thickness, y, x + width, y + height, color)
+        val stack = menu.getSlot(menuSlot).item
+        val hovered = mouseX in x until (x + slotSize) && mouseY in y until (y + slotSize)
+        graphics.fill(
+            x,
+            y,
+            x + slotSize - 1,
+            y + slotSize - 1,
+            when {
+                hovered -> SkyHudTheme.SLOT_HOVER
+                stack.isEmpty -> SkyHudTheme.SLOT
+                else -> SkyHudTheme.SLOT_FILLED
+            },
+        )
+        if (!stack.isEmpty) {
+            graphics.item(stack, x + 1, y + 1)
+            graphics.itemDecorations(font, stack, x + 1, y + 1)
+            if (hovered) graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
+        }
     }
 
-    private fun drawSlotOutline(graphics: GuiGraphicsExtractor, x: Int, y: Int, size: Int, color: Int) {
-        graphics.fill(x, y, x + size, y + 1, color)
-        graphics.fill(x, y + size - 1, x + size, y + size, color)
-        graphics.fill(x, y, x + 1, y + size, color)
-        graphics.fill(x + size - 1, y, x + size, y + size, color)
-    }
-
-    private fun drawScrollbar(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+    private fun drawScrollbar(
+        graphics: GuiGraphicsExtractor,
+        mouseX: Int,
+        mouseY: Int,
+        x: Int,
+        top: Int,
+        bottom: Int,
+    ) {
         if (maxScroll <= 0.0) return
-        val top = headerHeight + 16
-        val bottom = height - 16
         val trackHeight = bottom - top
-        val thumbHeight = (trackHeight * (trackHeight / (trackHeight + maxScroll))).toInt().coerceAtLeast(28)
+        val thumbHeight = (trackHeight * (trackHeight / (trackHeight + maxScroll))).toInt().coerceAtLeast(24)
         val thumbTravel = trackHeight - thumbHeight
         val thumbY = top + ((scroll / maxScroll) * thumbTravel).toInt()
-        val x = width - 16
-        SkyHudTheme.roundedRect(graphics, x, top, 4, trackHeight, 0xFF202020.toInt())
+        SkyHudTheme.roundedRect(graphics, x, top, 3, trackHeight, 0xFF202020.toInt())
         SkyHudTheme.roundedRect(
             graphics,
             x,
             thumbY,
-            4,
+            3,
             thumbHeight,
-            if (mouseX in (x - 3)..(x + 7) && mouseY in thumbY..(thumbY + thumbHeight)) {
+            if (mouseX in (x - 3)..(x + 6) && mouseY in thumbY..(thumbY + thumbHeight)) {
                 SkyHudTheme.PRIMARY_HOVER
             } else {
                 SkyHudTheme.PRIMARY
@@ -296,7 +372,7 @@ class EnderChestScreen(
         verticalAmount: Double,
     ): Boolean {
         if (maxScroll > 0.0) {
-            scroll = (scroll - verticalAmount * 34.0).coerceIn(0.0, maxScroll)
+            scroll = (scroll - verticalAmount * 30.0).coerceIn(0.0, maxScroll)
             return true
         }
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
@@ -304,40 +380,49 @@ class EnderChestScreen(
 
     override fun mouseClicked(click: MouseButtonEvent, doubled: Boolean): Boolean {
         if (super.mouseClicked(click, doubled)) return true
+        if (click.button() !in 0..1) return false
         val mouseX = click.x.toInt()
         val mouseY = click.y.toInt()
-        if (click.button() != 0) return false
 
-        if (mouseX in (width - 21)..(width - 6) && mouseY in (headerHeight + 8)..(height - 8)) {
+        val scrollbarX = panelX() + panelWidth() - 9
+        val scrollbarTop = panelY() + headerHeight + 10
+        val scrollbarBottom = panelY() + panelHeight() - inventoryHeight - 10
+        if (click.button() == 0 && mouseX in (scrollbarX - 4)..(scrollbarX + 7) && mouseY in scrollbarTop..scrollbarBottom) {
             draggingScrollbar = true
-            updateScrollFromMouse(mouseY)
+            updateScrollFromMouse(mouseY, scrollbarTop, scrollbarBottom)
+            return true
+        }
+
+        inventorySlotBounds.firstOrNull {
+            mouseX in it.x until (it.x + slotSize) && mouseY in it.y until (it.y + slotSize)
+        }?.let {
+            clickBackingSlot(it.menuSlot, click.button(), click.hasShiftDown())
             return true
         }
 
         val card = pageBounds.firstOrNull {
             mouseX in it.x until (it.x + it.width) && mouseY in it.y until (it.y + it.height)
         } ?: return false
-
-        if (!card.loaded || card.page != currentPage) {
-            navigateToPage(card.page)
+        if (!card.loaded || card.key != currentPage) {
+            navigateToPage(card.key)
             return true
         }
 
         val itemX = mouseX - card.x
         val itemY = mouseY - (card.y + pageTitleHeight)
-        if (itemX < 0 || itemY < 0) return true
-        val slotPitch = slotSize + slotGap
         val column = itemX / slotPitch
         val row = itemY / slotPitch
-        if (column !in 0..8 || row !in 0 until visibleRowCount()) return true
-        if (itemX % slotPitch >= slotSize || itemY % slotPitch >= slotSize) return true
-        clickBackingSlot(9 + row * 9 + column, click.button())
+        if (itemX >= 0 && itemY >= 0 && column in 0..8 && row in 0 until visibleRowCount(EnderChestRepository.allPages())) {
+            clickBackingSlot(9 + row * 9 + column, click.button(), click.hasShiftDown())
+        }
         return true
     }
 
     override fun mouseDragged(click: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
         if (draggingScrollbar) {
-            updateScrollFromMouse(click.y.toInt())
+            val top = panelY() + headerHeight + 10
+            val bottom = panelY() + panelHeight() - inventoryHeight - 10
+            updateScrollFromMouse(click.y.toInt(), top, bottom)
             return true
         }
         return super.mouseDragged(click, dragX, dragY)
@@ -351,56 +436,69 @@ class EnderChestScreen(
         return super.mouseReleased(click)
     }
 
-    private fun updateScrollFromMouse(mouseY: Int) {
-        val top = headerHeight + 16
-        val bottom = height - 16
+    private fun updateScrollFromMouse(mouseY: Int, top: Int, bottom: Int) {
         val percentage = ((mouseY - top).toDouble() / (bottom - top)).coerceIn(0.0, 1.0)
         scroll = percentage * maxScroll
     }
 
-    private fun navigateToPage(page: Int) {
-        minecraft.player?.connection?.sendCommand("enderchest $page")
+    private fun navigateToPage(key: StoragePageKey) {
+        minecraft.player?.connection?.sendCommand(key.navigationCommand)
     }
 
-    private fun visibleRowCount(): Int {
-        val cachedRows = (1..totalPages)
-            .mapNotNull { EnderChestRepository.page(it)?.rows }
-            .maxOrNull()
-        return (cachedRows ?: backingMenu?.rowCount?.minus(1) ?: 4).coerceIn(1, 5)
-    }
-
-    private fun gridHeight(rows: Int): Int = rows * slotSize + (rows - 1).coerceAtLeast(0) * slotGap
-
-    private fun pageHeight(rows: Int): Int = pageTitleHeight + gridHeight(rows)
-
-    private fun clickBackingSlot(slot: Int, button: Int) {
+    private fun clickBackingSlot(slot: Int, button: Int, quickMove: Boolean) {
         val menu = backingMenu ?: return
         val player = minecraft.player ?: return
-        if (player.containerMenu !== menu || slot !in 0 until (menu.rowCount * 9)) return
+        if (player.containerMenu !== menu || slot !in menu.slots.indices) return
         minecraft.gameMode?.handleContainerInput(
             menu.containerId,
             slot,
             button,
-            ContainerInput.PICKUP,
+            if (quickMove) ContainerInput.QUICK_MOVE else ContainerInput.PICKUP,
             player,
         )
     }
 
-    private fun pageMatchesSearch(page: Int): Boolean {
+    private fun visibleRowCount(pages: List<StoragePageKey>): Int =
+        (pages.mapNotNull { EnderChestRepository.page(it)?.rows }.maxOrNull()
+            ?: backingMenu?.rowCount?.minus(1)
+            ?: 4).coerceIn(1, 5)
+
+    private fun pageMatchesSearch(key: StoragePageKey): Boolean {
         if (searchText.isBlank()) return true
-        val cached = EnderChestRepository.page(page) ?: return true
+        val cached = EnderChestRepository.page(key) ?: return true
         return cached.items.any(::itemMatches)
     }
 
     private fun itemMatches(stack: ItemStack): Boolean {
         if (searchText.isBlank()) return true
         if (stack.isEmpty) return false
-        val name = stack.hoverName.string
-        return searchText
-            .trim()
-            .split(Regex("\\s+"))
-            .all { name.contains(it, ignoreCase = true) }
+        return searchText.trim().split(Regex("\\s+")).all {
+            stack.hoverName.string.contains(it, ignoreCase = true)
+        }
     }
+
+    private fun drawOutline(
+        graphics: GuiGraphicsExtractor,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        color: Int,
+        thickness: Int,
+    ) {
+        graphics.fill(x, y, x + width, y + thickness, color)
+        graphics.fill(x, y + height - thickness, x + width, y + height, color)
+        graphics.fill(x, y, x + thickness, y + height, color)
+        graphics.fill(x + width - thickness, y, x + width, y + height, color)
+    }
+
+    private fun panelWidth(): Int = (width - 20).coerceAtMost(panelMaxWidth).coerceAtLeast(1)
+
+    private fun panelHeight(): Int = (height - 20).coerceAtMost(panelMaxHeight).coerceAtLeast(1)
+
+    private fun panelX(): Int = (width - panelWidth()) / 2
+
+    private fun panelY(): Int = (height - panelHeight()) / 2
 
     override fun onClose() {
         closed()
