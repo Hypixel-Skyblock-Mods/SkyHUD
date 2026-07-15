@@ -2,6 +2,7 @@ package org.hypixelskyblockmods.skyhud
 
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
@@ -36,6 +37,7 @@ object SkyHudClient : ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(EquipmentController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register(LoadoutController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register(WardrobeController::onClientTick)
+        ClientLifecycleEvents.CLIENT_STOPPING.register { SkyHudConfigManager.save() }
         logger.info("SkyHUD initialized")
     }
 }

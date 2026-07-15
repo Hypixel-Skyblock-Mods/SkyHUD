@@ -18,13 +18,23 @@ object SkyHudConfigManager {
     fun initialize() {
         val file = FabricLoader.getInstance().configDir.resolve("skyhud.json").toFile()
         managed = ManagedConfig.create(file, SkyHudConfig::class.java)
+        save()
     }
 
-    fun createScreen(parent: Screen?): Screen = MoulConfigScreenComponent(
-        Component.literal("SkyHUD Settings"),
-        GuiContext(GuiElementComponent(managed.getEditor())),
-        parent,
-    )
+    fun createScreen(parent: Screen?): Screen = object : MoulConfigScreenComponent(
+            Component.literal("SkyHUD Settings"),
+            GuiContext(GuiElementComponent(managed.getEditor())),
+            parent,
+        ) {
+            override fun removed() {
+                save()
+                super.removed()
+            }
+        }
+
+    fun save() {
+        if (::managed.isInitialized) managed.saveToFile()
+    }
 
     fun open() {
         ScreenCompat.setScreen(createScreen(ScreenCompat.currentScreen()))
