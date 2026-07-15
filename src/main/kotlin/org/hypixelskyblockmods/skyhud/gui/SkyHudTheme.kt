@@ -12,6 +12,7 @@ object SkyHudTheme {
     const val TEXT = 0xFFF4F6FA.toInt()
     const val TEXT_MUTED = 0xFF9097A3.toInt()
     const val SLOT = 0xFF090909.toInt()
+    const val SLOT_FILLED = 0xFF0B1221.toInt()
     const val SLOT_HOVER = 0xFF22334F.toInt()
 
     fun roundedRect(
