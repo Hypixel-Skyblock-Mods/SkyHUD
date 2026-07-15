@@ -94,8 +94,8 @@ class EnderChestScreen(
         val searchWidth = 140
         val search = EditBox(
             font,
-            panelX + (panelWidth() - searchWidth) / 2,
-            panelY + 6,
+            searchX(panelX, panelWidth(), searchWidth),
+            panelY + 7,
             searchWidth,
             12,
             Component.literal("Search Storage"),
@@ -139,23 +139,25 @@ class EnderChestScreen(
             SkyHudTheme.PRIMARY,
         )
         graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.PRIMARY)
-        val editHovered = mouseX in (panelX + 7) until (panelX + 40) && mouseY in (panelY + 4) until (panelY + 20)
+        val titleX = panelX + 8
+        val editX = headerEditX(panelX, "STORAGE")
+        val editHovered = mouseX in editX until (editX + 33) && mouseY in (panelY + 4) until (panelY + 20)
+        graphics.text(font, "STORAGE", titleX, panelY + 8, SkyHudTheme.TEXT, false)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
-            panelX + 7,
+            editX,
             panelY + 4,
             33,
             16,
             if (editHovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
             SkyHudTheme.PRIMARY,
         )
-        graphics.text(font, "EDIT", panelX + 12, panelY + 8, SkyHudTheme.TEXT, false)
-        graphics.text(font, "STORAGE", panelX + 47, panelY + 8, SkyHudTheme.TEXT, false)
+        graphics.text(font, "EDIT", editX + 5, panelY + 8, SkyHudTheme.TEXT, false)
 
         val searchWidth = 140
         SkyHudTheme.outlinedRoundedRect(
             graphics,
-            panelX + (panelWidth - searchWidth - 8) / 2,
+            searchX(panelX, panelWidth, searchWidth) - 4,
             panelY + 3,
             searchWidth + 8,
             18,
@@ -270,7 +272,7 @@ class EnderChestScreen(
         val hovered = mouseX in x until (x + pageWidth) && mouseY in y until (gridY + gridHeight)
 
         if (active) {
-            drawOutline(graphics, x - 3, gridY - 3, pageWidth + 6, gridHeight + 6, SkyHudTheme.PRIMARY_HOVER, 2)
+            drawOutline(graphics, x - 2, gridY - 2, pageWidth + 4, gridHeight + 4, SkyHudTheme.PRIMARY_HOVER, 1)
         }
         graphics.text(font, key.displayName, x, y + 1, SkyHudTheme.TEXT, false)
 
@@ -448,7 +450,7 @@ class EnderChestScreen(
         val mouseY = click.y.toInt()
         if (
             click.button() == 0 &&
-            mouseX in (panelX() + 7) until (panelX() + 40) &&
+            mouseX in headerEditX(panelX(), "STORAGE") until (headerEditX(panelX(), "STORAGE") + 33) &&
             mouseY in (panelY() + 4) until (panelY() + 20)
         ) {
             editOriginal()
@@ -579,6 +581,12 @@ class EnderChestScreen(
     private fun panelX(): Int = (width - panelWidth()) / 2
 
     private fun panelY(): Int = (height - panelHeight()) / 2
+
+    private fun searchX(panelX: Int, panelWidth: Int, searchWidth: Int): Int =
+        panelX + panelWidth - searchWidth - 11
+
+    private fun headerEditX(panelX: Int, heading: String): Int =
+        panelX + 8 + font.width(heading) + 7
 
     private fun inventoryPanelWidth(): Int = 9 * inventorySlotPitch + 20
 

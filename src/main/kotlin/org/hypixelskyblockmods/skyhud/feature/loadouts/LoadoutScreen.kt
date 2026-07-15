@@ -73,8 +73,8 @@ class LoadoutScreen(
         val searchWidth = 140
         val search = EditBox(
             font,
-            panelX() + (panelWidth() - searchWidth) / 2,
-            panelY() + 6,
+            searchX(panelX(), panelWidth(), searchWidth),
+            panelY() + 7,
             searchWidth,
             12,
             Component.literal("Search Loadouts"),
@@ -125,23 +125,25 @@ class LoadoutScreen(
         panelY: Int,
         panelWidth: Int,
     ) {
-        val editHovered = mouseX in (panelX + 7) until (panelX + 40) && mouseY in (panelY + 4) until (panelY + 20)
+        val titleX = panelX + 8
+        val editX = headerEditX(panelX, "LOADOUTS")
+        val editHovered = mouseX in editX until (editX + 33) && mouseY in (panelY + 4) until (panelY + 20)
+        graphics.text(font, "LOADOUTS", titleX, panelY + 8, SkyHudTheme.TEXT, false)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
-            panelX + 7,
+            editX,
             panelY + 4,
             33,
             16,
             if (editHovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.PRIMARY,
             SkyHudTheme.PRIMARY,
         )
-        graphics.text(font, "EDIT", panelX + 12, panelY + 8, SkyHudTheme.TEXT, false)
-        graphics.text(font, "LOADOUTS", panelX + 47, panelY + 8, SkyHudTheme.TEXT, false)
+        graphics.text(font, "EDIT", editX + 5, panelY + 8, SkyHudTheme.TEXT, false)
 
         val searchWidth = 140
         SkyHudTheme.outlinedRoundedRect(
             graphics,
-            panelX + (panelWidth - searchWidth - 8) / 2,
+            searchX(panelX, panelWidth, searchWidth) - 4,
             panelY + 3,
             searchWidth + 8,
             18,
@@ -220,7 +222,7 @@ class LoadoutScreen(
             else -> SkyHudTheme.SURFACE
         }
         SkyHudTheme.roundedRect(graphics, x, cardY, width, cardHeight, fill)
-        if (selected) drawOutline(graphics, x - 2, cardY - 2, width + 4, cardHeight + 4, SkyHudTheme.PRIMARY_HOVER)
+        if (selected) drawOutline(graphics, x - 1, cardY - 1, width + 2, cardHeight + 2, SkyHudTheme.PRIMARY_HOVER)
 
         val name = loadout?.name ?: "LOADOUT ${card.id}"
         val nameHovered = loadout != null && !locked && mouseX in x until (x + width) && mouseY in y until cardY
@@ -255,8 +257,8 @@ class LoadoutScreen(
             drawItemSlot(
                 graphics,
                 stack,
-                x + 6 + (index % 2) * 22,
-                cardY + cardHeight - 47 + (index / 2) * 22,
+                x + 6,
+                cardY + cardHeight - 86 + index * 22,
                 mouseX,
                 mouseY,
             )
@@ -439,7 +441,11 @@ class LoadoutScreen(
         val panelX = panelX()
         val panelY = panelY()
 
-        if (click.button() == 0 && mouseX in (panelX + 7) until (panelX + 40) && mouseY in (panelY + 4) until (panelY + 20)) {
+        if (
+            click.button() == 0 &&
+            mouseX in headerEditX(panelX, "LOADOUTS") until (headerEditX(panelX, "LOADOUTS") + 33) &&
+            mouseY in (panelY + 4) until (panelY + 20)
+        ) {
             editOriginal()
             return true
         }
@@ -528,10 +534,10 @@ class LoadoutScreen(
     }
 
     private fun drawOutline(graphics: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, color: Int) {
-        graphics.fill(x, y, x + width, y + 2, color)
-        graphics.fill(x, y + height - 2, x + width, y + height, color)
-        graphics.fill(x, y, x + 2, y + height, color)
-        graphics.fill(x + width - 2, y, x + width, y + height, color)
+        graphics.fill(x, y, x + width, y + 1, color)
+        graphics.fill(x, y + height - 1, x + width, y + height, color)
+        graphics.fill(x, y, x + 1, y + height, color)
+        graphics.fill(x + width - 1, y, x + width, y + height, color)
     }
 
     private fun panelWidth(): Int = (width - 20).coerceAtMost(panelMaxWidth).coerceAtLeast(1)
@@ -541,6 +547,12 @@ class LoadoutScreen(
     private fun panelX(): Int = (width - panelWidth()) / 2
 
     private fun panelY(): Int = (height - panelHeight()) / 2
+
+    private fun searchX(panelX: Int, panelWidth: Int, searchWidth: Int): Int =
+        panelX + panelWidth - searchWidth - 11
+
+    private fun headerEditX(panelX: Int, heading: String): Int =
+        panelX + 8 + font.width(heading) + 7
 
     override fun onClose() {
         closed()
