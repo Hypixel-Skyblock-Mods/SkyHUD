@@ -37,7 +37,7 @@ class ThemeConfig {
     @field:Expose
     @field:ConfigOption(
         name = "Preset",
-        desc = "Original is fully dark. Transparent keeps the panels readable while showing more of the world.",
+        desc = "Original uses the opaque navy theme. Transparent uses neutral translucent panels that keep the world visible.",
     )
     @field:ConfigEditorDropdown(values = ["Original", "Transparent"])
     @JvmField
