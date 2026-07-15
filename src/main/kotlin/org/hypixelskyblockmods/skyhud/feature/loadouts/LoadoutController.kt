@@ -9,7 +9,7 @@ object LoadoutController {
     private var activeScreen: LoadoutScreen? = null
 
     fun onScreenOpened(client: Minecraft, screen: Screen) {
-        if (!SkyHudConfigManager.config.loadouts.enabled) return
+        if (!SkyHudConfigManager.config.huds.loadouts.enabled) return
         val target = LoadoutDetector.detect(screen) ?: return
         LoadoutRepository.remember(target.page, target.menu)
 

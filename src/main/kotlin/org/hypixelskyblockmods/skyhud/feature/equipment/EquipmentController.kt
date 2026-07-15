@@ -10,7 +10,7 @@ object EquipmentController {
     private var activeScreen: SetCollectionScreen? = null
 
     fun onScreenOpened(client: Minecraft, screen: Screen) {
-        if (!SkyHudConfigManager.config.equipment.enabled) return
+        if (!SkyHudConfigManager.config.huds.equipment.enabled) return
         val target = EquipmentDetector.detect(screen) ?: return
         EquipmentRepository.sets.remember(target.page, target.menu)
 

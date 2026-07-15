@@ -10,7 +10,7 @@ object WardrobeController {
     private var activeScreen: SetCollectionScreen? = null
 
     fun onScreenOpened(client: Minecraft, screen: Screen) {
-        if (!SkyHudConfigManager.config.wardrobe.enabled) return
+        if (!SkyHudConfigManager.config.huds.wardrobe.enabled) return
         val target = WardrobeDetector.detect(screen) ?: return
         WardrobeRepository.sets.remember(target.page, target.menu)
 

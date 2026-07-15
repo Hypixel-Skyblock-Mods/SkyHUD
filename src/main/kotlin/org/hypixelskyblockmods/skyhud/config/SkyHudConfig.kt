@@ -2,6 +2,7 @@ package org.hypixelskyblockmods.skyhud.config
 
 import com.google.gson.annotations.Expose
 import io.github.notenoughupdates.moulconfig.Config
+import io.github.notenoughupdates.moulconfig.annotations.Accordion
 import io.github.notenoughupdates.moulconfig.annotations.Category
 import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorBoolean
 import io.github.notenoughupdates.moulconfig.annotations.ConfigOption
@@ -10,55 +11,53 @@ import io.github.notenoughupdates.moulconfig.common.text.StructuredText
 
 class SkyHudConfig : Config() {
     @field:Category(
-        name = "Ender Chest",
-        desc = "Configure SkyHUD's modern Ender Chest overview.",
+        name = "HUDS",
+        desc = "Configure SkyHUD's interface overhauls.",
     )
     @field:Expose
     @JvmField
-    var enderChest = FeatureToggle(
-        enabled = true,
-        optionName = "Modern Ender Chest",
-        optionDescription = "Replace Hypixel Ender Chest pages with the searchable all-pages overview.",
-    )
-
-    @field:Category(
-        name = "Loadouts",
-        desc = "Configure SkyHUD's modern Loadouts interface.",
-    )
-    @field:Expose
-    @JvmField
-    var loadouts = FeatureToggle(
-        enabled = true,
-        optionName = "Modern Loadouts",
-        optionDescription = "Replace Hypixel's Loadouts page with a searchable three-column overview.",
-    )
-
-    @field:Category(
-        name = "Wardrobe",
-        desc = "Configure SkyHUD's modern Wardrobe interface.",
-    )
-    @field:Expose
-    @JvmField
-    var wardrobe = FeatureToggle(
-        enabled = true,
-        optionName = "Modern Wardrobe",
-        optionDescription = "Replace Hypixel's Wardrobe with clean outfit cards and search.",
-    )
-
-    @field:Category(
-        name = "Equipment",
-        desc = "Configure SkyHUD's modern Equipment Sets interface.",
-    )
-    @field:Expose
-    @JvmField
-    var equipment = FeatureToggle(
-        enabled = true,
-        optionName = "Modern Equipment Sets",
-        optionDescription = "Replace /eq with a searchable three-column equipment set overview.",
-    )
+    var huds = HudConfig()
 
     override fun getTitle(): StructuredText =
         IMinecraft.INSTANCE.createLiteral("SkyHUD Settings")
+}
+
+class HudConfig {
+    @field:ConfigOption(
+        name = "Ender Chest",
+        desc = "Configure SkyHUD's modern Ender Chest overview.",
+    )
+    @field:Accordion
+    @field:Expose
+    @JvmField
+    var enderChest = FeatureToggle()
+
+    @field:ConfigOption(
+        name = "Loadouts",
+        desc = "Configure SkyHUD's modern Loadouts interface.",
+    )
+    @field:Accordion
+    @field:Expose
+    @JvmField
+    var loadouts = FeatureToggle()
+
+    @field:ConfigOption(
+        name = "Wardrobe",
+        desc = "Configure SkyHUD's modern Wardrobe interface.",
+    )
+    @field:Accordion
+    @field:Expose
+    @JvmField
+    var wardrobe = FeatureToggle()
+
+    @field:ConfigOption(
+        name = "Equipment",
+        desc = "Configure SkyHUD's modern Equipment Sets interface.",
+    )
+    @field:Accordion
+    @field:Expose
+    @JvmField
+    var equipment = FeatureToggle()
 }
 
 class FeatureToggle(
@@ -67,8 +66,4 @@ class FeatureToggle(
     @field:ConfigEditorBoolean
     @JvmField
     var enabled: Boolean = true,
-    @Transient
-    var optionName: String = "Enabled",
-    @Transient
-    var optionDescription: String = "Enable this interface overhaul.",
 )

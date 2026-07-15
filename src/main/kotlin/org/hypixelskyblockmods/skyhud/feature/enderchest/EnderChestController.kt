@@ -9,7 +9,7 @@ object EnderChestController {
     private var activeScreen: EnderChestScreen? = null
 
     fun onScreenOpened(client: Minecraft, screen: Screen) {
-        if (!SkyHudConfigManager.config.enderChest.enabled) return
+        if (!SkyHudConfigManager.config.huds.enderChest.enabled) return
         val target = EnderChestDetector.detect(screen) ?: return
         EnderChestRepository.remember(target.page, target.menu)
 
