@@ -11,6 +11,7 @@
     "sources": "https://github.com/Hypixel-Skyblock-Mods/SkyHUD"
   },
   "license": "All-Rights-Reserved",
+  "icon": "assets/skyhud/icon.png",
   "environment": "client",
   "entrypoints": {
     "client": [
