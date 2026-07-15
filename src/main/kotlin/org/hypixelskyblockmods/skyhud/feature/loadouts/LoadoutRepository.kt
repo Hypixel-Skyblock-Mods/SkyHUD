@@ -79,21 +79,36 @@ object LoadoutRepository {
             val selected = !locked && !unused &&
                 lore.none { it.contains("Left-click to equip!", ignoreCase = true) }
             val remembered = previous[id]
-            val armor = if (selected) armorSlots.map { menu.loadoutItem(it) } else remembered?.armor.orEmpty()
+            val retainRemembered = !locked && !unused
+            val armor = when {
+                selected -> armorSlots.map { menu.loadoutItem(it) }
+                retainRemembered -> remembered?.armor.orEmpty()
+                else -> List(4) { ItemStack.EMPTY }
+            }
             val equipment = if (selected) {
                 equipmentSlots.map { menu.loadoutItem(it) }
-            } else {
+            } else if (retainRemembered) {
                 remembered?.equipment.orEmpty()
+            } else {
+                List(4) { ItemStack.EMPTY }
             }
-            val pet = if (selected) menu.loadoutItem(petSlot) else remembered?.pet ?: ItemStack.EMPTY
-            val hotf = if (selected) menu.loadoutItem(hotfSlot) else remembered?.hotf ?: ItemStack.EMPTY
-            val hotm = if (selected) menu.loadoutItem(hotmSlot) else remembered?.hotm ?: ItemStack.EMPTY
+            val pet = if (selected) menu.loadoutItem(petSlot) else remembered?.pet.takeIf { retainRemembered } ?: ItemStack.EMPTY
+            val hotf = if (selected) menu.loadoutItem(hotfSlot) else remembered?.hotf.takeIf { retainRemembered } ?: ItemStack.EMPTY
+            val hotm = if (selected) menu.loadoutItem(hotmSlot) else remembered?.hotm.takeIf { retainRemembered } ?: ItemStack.EMPTY
             val powerStone = if (selected) {
                 menu.loadoutItem(powerStoneSlot)
-            } else {
+            } else if (retainRemembered) {
                 remembered?.powerStone ?: ItemStack.EMPTY
+            } else {
+                ItemStack.EMPTY
             }
-            val tunings = if (selected) menu.loadoutItem(tuningsSlot) else remembered?.tunings ?: ItemStack.EMPTY
+            val tunings = if (selected) {
+                menu.loadoutItem(tuningsSlot)
+            } else if (retainRemembered) {
+                remembered?.tunings ?: ItemStack.EMPTY
+            } else {
+                ItemStack.EMPTY
+            }
 
             CachedLoadout(
                 id = id,

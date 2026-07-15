@@ -27,26 +27,35 @@ inventory menus with clean, modern interfaces.
 
 - Replaces the current `(n/n) Armor Sets` menu while retaining compatibility
   with the legacy Wardrobe title.
-- Presents three large outfits per row with each title above its four armor
-  slots.
+- Presents every server page in one compact five-column grid and renders each
+  outfit's armor on a player mannequin.
 - Outlines only the equipped outfit and leaves inactive sets unframed.
-- Supports armor-name search, equip/unequip, and validated page navigation.
+- Supports armor-name search, background page loading, and equip/unequip.
 
 ### Loadouts
 
 - Replaces Hypixel's new `(n/n) Loadouts` pages with five loadouts per row.
 - Displays armor on a player mannequin, equipment beside it, and the selected pet in the top-left.
+- Displays HOTM, HOTF, Power Stone, and stat-tuning slots at the bottom-left.
+- Keeps all three server pages in one retained grid, with load actions for pages
+  that have not been visited yet.
 - Remembers details after a loadout has been selected and outlines only the
   equipped loadout.
+- Grays out empty loadouts without removing their edit pen, and lets the
+  loadout title open the server edit/rename flow.
 - Supports native item tooltips, loadout and item search, locked slots, validated
   page navigation, and a pen button that opens Hypixel's loadout editor.
 
 ### Equipment Sets
 
 - Replaces the Equipment Sets menu opened by `/eq`.
-- Presents three large sets per row with four equipment slots per set.
-- Uses the same selected-only outline, search, and page controls as Wardrobe.
+- Presents all sets in one compact five-column retained grid.
+- Uses the same selected-only outline, search, and background page loading as
+  Wardrobe.
 - Sends equip and unequip actions through the original server inventory slots.
+
+Each custom screen has a compact **Edit** action that temporarily opens the
+original Hypixel menu without the overlay replacing it.
 
 All interfaces use SkyHUD's dark palette: `#0D0D0D` backgrounds with
 `#1E3A69` accents. Detection is limited to verified Hypixel screen titles,
