@@ -10,7 +10,7 @@
   "contact": {
     "sources": "https://github.com/Hypixel-Skyblock-Mods/SkyHUD"
   },
-  "license": "MIT",
+  "license": "All-Rights-Reserved",
   "environment": "client",
   "entrypoints": {
     "client": [
