@@ -22,6 +22,18 @@ class SkyHudConfig : Config() {
     )
 
     @field:Category(
+        name = "Loadouts",
+        desc = "Configure SkyHUD's modern Loadouts interface.",
+    )
+    @field:Expose
+    @JvmField
+    var loadouts = FeatureToggle(
+        enabled = true,
+        optionName = "Modern Loadouts",
+        optionDescription = "Replace Hypixel's Loadouts page with a searchable three-column overview.",
+    )
+
+    @field:Category(
         name = "Wardrobe",
         desc = "Configure SkyHUD's modern Wardrobe interface.",
     )
