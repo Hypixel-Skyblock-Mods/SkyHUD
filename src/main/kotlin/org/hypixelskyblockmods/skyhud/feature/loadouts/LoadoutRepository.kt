@@ -1,6 +1,7 @@
 package org.hypixelskyblockmods.skyhud.feature.loadouts
 
 import net.minecraft.world.inventory.ChestMenu
+import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.item.ItemStack
 import org.hypixelskyblockmods.skyhud.util.ItemText
 import org.hypixelskyblockmods.skyhud.util.VanillaItemIds
@@ -21,9 +22,20 @@ data class CachedLoadout(
     val selected: Boolean,
     val locked: Boolean,
     val empty: Boolean,
+    val renameAction: LoadoutClickAction,
 ) {
     val items: List<ItemStack>
         get() = armor + equipment + listOf(pet, hotm, hotf, powerStone, tunings)
+}
+
+data class LoadoutClickAction(
+    val button: Int,
+    val input: ContainerInput,
+) {
+    companion object {
+        val LEFT = LoadoutClickAction(0, ContainerInput.PICKUP)
+        val RIGHT = LoadoutClickAction(1, ContainerInput.PICKUP)
+    }
 }
 
 data class LoadoutCard(
@@ -126,6 +138,7 @@ object LoadoutRepository {
                 selected = selected,
                 locked = locked,
                 empty = unused,
+                renameAction = renameAction(lore),
             )
         }
         pages[page] = CachedLoadoutPage(page, loadouts)
@@ -148,4 +161,18 @@ object LoadoutRepository {
             .takeUnless(VanillaItemIds::isGlassPane)
             ?.copy()
             ?: ItemStack.EMPTY
+
+    private fun renameAction(lore: List<String>): LoadoutClickAction {
+        val instruction = lore.firstOrNull { it.contains("rename", ignoreCase = true) }?.lowercase()
+            ?: return LoadoutClickAction.RIGHT
+        return when {
+            "middle" in instruction -> LoadoutClickAction(2, ContainerInput.CLONE)
+            "shift" in instruction -> LoadoutClickAction(
+                if ("right" in instruction) 1 else 0,
+                ContainerInput.QUICK_MOVE,
+            )
+            "left" in instruction -> LoadoutClickAction.LEFT
+            else -> LoadoutClickAction.RIGHT
+        }
+    }
 }

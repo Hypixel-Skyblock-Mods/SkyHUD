@@ -19,7 +19,7 @@ import net.minecraft.world.level.Level
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 
 class LoadoutScreen(
-    private val requestAction: (page: Int, inventorySlot: Int?, button: Int) -> Unit,
+    private val requestAction: (page: Int, inventorySlot: Int?, action: LoadoutClickAction) -> Unit,
     private val editOriginal: () -> Unit,
     private val closed: () -> Unit,
 ) : Screen(Component.literal("SkyHUD Loadouts")) {
@@ -235,7 +235,9 @@ class LoadoutScreen(
         if (nameHovered) graphics.setTooltipForNextFrame(Component.literal("Rename loadout"), mouseX, mouseY)
 
         if (loadout == null) {
-            drawLoadPageButton(graphics, card.page, x, cardY, width, mouseX, mouseY)
+            if (card.inventorySlot == LoadoutLayout.iconSlots(card.page).firstOrNull()) {
+                drawLoadPageButton(graphics, card.page, x, cardY, width, mouseX, mouseY)
+            }
             return
         }
 
@@ -456,7 +458,7 @@ class LoadoutScreen(
         } ?: return false
         val loadout = bounds.card.loadout
         if (loadout == null) {
-            if (click.button() == 0) requestAction(bounds.card.page, null, 0)
+            if (click.button() == 0) requestAction(bounds.card.page, null, LoadoutClickAction.LEFT)
             return true
         }
 
@@ -464,19 +466,20 @@ class LoadoutScreen(
         val editHovered = mouseX in bounds.editX until (bounds.editX + bounds.editSize) &&
             mouseY in bounds.editY until (bounds.editY + bounds.editSize)
         when {
-            click.button() == 0 && (nameHovered || editHovered) && !loadout.locked -> performAction(loadout, 1)
-            click.button() == 0 && !loadout.locked && !loadout.empty -> performAction(loadout, 0)
-            click.button() == 1 && !loadout.locked -> performAction(loadout, 1)
+            click.button() == 0 && nameHovered && !loadout.locked -> performAction(loadout, loadout.renameAction)
+            click.button() == 0 && editHovered && !loadout.locked -> performAction(loadout, LoadoutClickAction.RIGHT)
+            click.button() == 0 && !loadout.locked && !loadout.empty -> performAction(loadout, LoadoutClickAction.LEFT)
+            click.button() == 1 && !loadout.locked -> performAction(loadout, LoadoutClickAction.RIGHT)
             else -> return true
         }
         return true
     }
 
-    private fun performAction(loadout: CachedLoadout, button: Int) {
+    private fun performAction(loadout: CachedLoadout, action: LoadoutClickAction) {
         if (loadout.page == currentPage) {
-            clickBackingSlot(loadout.inventorySlot, button)
+            clickBackingSlot(loadout.inventorySlot, action)
         } else {
-            requestAction(loadout.page, loadout.inventorySlot, button)
+            requestAction(loadout.page, loadout.inventorySlot, action)
         }
     }
 
@@ -500,11 +503,11 @@ class LoadoutScreen(
         scroll = (((mouseY - top).toDouble() / (bottom - top)).coerceIn(0.0, 1.0) * maxScroll)
     }
 
-    private fun clickBackingSlot(slot: Int, button: Int) {
+    private fun clickBackingSlot(slot: Int, action: LoadoutClickAction) {
         val menu = backingMenu ?: return
         val player = minecraft.player ?: return
         if (player.containerMenu !== menu || slot !in 0 until 54) return
-        minecraft.gameMode?.handleContainerInput(menu.containerId, slot, button, ContainerInput.PICKUP, player)
+        minecraft.gameMode?.handleContainerInput(menu.containerId, slot, action.button, action.input, player)
     }
 
     private fun loadoutMatchesSearch(card: LoadoutCard): Boolean {

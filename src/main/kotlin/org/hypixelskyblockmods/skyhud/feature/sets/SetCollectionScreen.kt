@@ -229,7 +229,7 @@ class SetCollectionScreen(
         )
 
         if (set == null) {
-            drawLoadPageButton(graphics, card.page, x, cardY, width, mouseX, mouseY)
+            if (card.index == 0) drawLoadPageButton(graphics, card.page, x, cardY, width, mouseX, mouseY)
             return
         }
 

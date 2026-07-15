@@ -8,7 +8,7 @@ import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
 
 object LoadoutController {
-    private data class PendingAction(val page: Int, val inventorySlot: Int?, val button: Int)
+    private data class PendingAction(val page: Int, val inventorySlot: Int?, val action: LoadoutClickAction)
 
     private var activeScreen: LoadoutScreen? = null
     private var currentTarget: LoadoutTarget? = null
@@ -64,8 +64,8 @@ object LoadoutController {
         pendingAction = null
     }
 
-    private fun requestAction(page: Int, inventorySlot: Int?, button: Int) {
-        pendingAction = PendingAction(page, inventorySlot, button)
+    private fun requestAction(page: Int, inventorySlot: Int?, action: LoadoutClickAction) {
+        pendingAction = PendingAction(page, inventorySlot, action)
         advancePendingAction()
     }
 
@@ -82,8 +82,8 @@ object LoadoutController {
                 client.gameMode?.handleContainerInput(
                     target.menu.containerId,
                     slot,
-                    action.button,
-                    ContainerInput.PICKUP,
+                    action.action.button,
+                    action.action.input,
                     player,
                 )
             }
