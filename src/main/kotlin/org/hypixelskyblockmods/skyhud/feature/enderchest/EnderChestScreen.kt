@@ -55,6 +55,8 @@ class EnderChestScreen(
     private val slotPitch = 20
     private val inventorySlotSize = 23
     private val inventorySlotPitch = 24
+    private val toolkitButtonSize = 18
+    private val toolkitButtonGap = 3
 
     fun bind(target: EnderChestTarget) {
         backingMenu = target.menu
@@ -164,6 +166,7 @@ class EnderChestScreen(
             SkyHudTheme.SURFACE,
             SkyHudTheme.BORDER,
         )
+        drawToolkitButtons(graphics, mouseX, mouseY, panelX, panelY, panelWidth, searchWidth)
 
         SkyHudTheme.outlinedRoundedRect(
             graphics,
@@ -254,6 +257,44 @@ class EnderChestScreen(
         }
 
         drawScrollbar(graphics, mouseX, mouseY, panelX + panelWidth - 9, viewportTop, viewportBottom)
+    }
+
+    private fun drawToolkitButtons(
+        graphics: GuiGraphicsExtractor,
+        mouseX: Int,
+        mouseY: Int,
+        panelX: Int,
+        panelY: Int,
+        panelWidth: Int,
+        searchWidth: Int,
+    ) {
+        val farmingX = farmingToolkitX(panelX, panelWidth, searchWidth)
+        val huntingX = farmingX - toolkitButtonSize - toolkitButtonGap
+        drawToolkitButton(graphics, ToolkitIcons.hunting, "Hunting Toolkit", huntingX, panelY + 3, mouseX, mouseY)
+        drawToolkitButton(graphics, ToolkitIcons.farming, "Farming Toolkit", farmingX, panelY + 3, mouseX, mouseY)
+    }
+
+    private fun drawToolkitButton(
+        graphics: GuiGraphicsExtractor,
+        icon: ItemStack,
+        label: String,
+        x: Int,
+        y: Int,
+        mouseX: Int,
+        mouseY: Int,
+    ) {
+        val hovered = mouseX in x until (x + toolkitButtonSize) && mouseY in y until (y + toolkitButtonSize)
+        SkyHudTheme.outlinedRoundedRect(
+            graphics,
+            x,
+            y,
+            toolkitButtonSize,
+            toolkitButtonSize,
+            if (hovered) SkyHudTheme.SURFACE_RAISED else SkyHudTheme.SURFACE,
+            if (hovered) SkyHudTheme.PRIMARY_HOVER else SkyHudTheme.BORDER,
+        )
+        graphics.item(icon, x + 1, y + 1)
+        if (hovered) graphics.setTooltipForNextFrame(Component.literal(label), mouseX, mouseY)
     }
 
     private fun drawPage(
@@ -457,6 +498,22 @@ class EnderChestScreen(
             return true
         }
 
+        if (click.button() == 0 && mouseY in (panelY() + 3) until (panelY() + 3 + toolkitButtonSize)) {
+            val farmingX = farmingToolkitX(panelX(), panelWidth(), 140)
+            val huntingX = farmingX - toolkitButtonSize - toolkitButtonGap
+            when {
+                mouseX in huntingX until (huntingX + toolkitButtonSize) -> {
+                    minecraft.player?.connection?.sendCommand("huntingtoolkit")
+                    return true
+                }
+
+                mouseX in farmingX until (farmingX + toolkitButtonSize) -> {
+                    minecraft.player?.connection?.sendCommand("farmingtoolkit")
+                    return true
+                }
+            }
+        }
+
         val scrollbarX = panelX() + panelWidth() - 9
         val scrollbarTop = panelY() + headerHeight + 5
         val scrollbarBottom = panelY() + panelHeight() - inventoryHeight - 5
@@ -587,6 +644,9 @@ class EnderChestScreen(
 
     private fun headerEditX(panelX: Int, heading: String): Int =
         panelX + 8 + font.width(heading) + 7
+
+    private fun farmingToolkitX(panelX: Int, panelWidth: Int, searchWidth: Int): Int =
+        searchX(panelX, panelWidth, searchWidth) - 4 - toolkitButtonSize - 5
 
     private fun inventoryPanelWidth(): Int = 9 * inventorySlotPitch + 20
 
