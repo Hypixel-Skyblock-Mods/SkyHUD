@@ -27,11 +27,12 @@ allprojects {
 
 subprojects {
     val target = targets[name] ?: return@subprojects
+    val artifactVersion = "${rootProject.version}+mc${target.minecraft}"
 
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "net.fabricmc.fabric-loom")
 
-    version = "${rootProject.version}+mc${target.minecraft}"
+    version = artifactVersion
 
     dependencies {
         add("minecraft", "com.mojang:minecraft:${target.minecraft}")
@@ -81,11 +82,11 @@ subprojects {
     }
 
     tasks.named<ProcessResources>("processResources") {
-        inputs.property("version", project.version)
+        inputs.property("version", artifactVersion)
         inputs.property("minecraft_version", target.minecraft)
         filesMatching("fabric.mod.json") {
             expand(
-                "version" to project.version,
+                "version" to artifactVersion,
                 "minecraft_version" to target.minecraft,
             )
         }
