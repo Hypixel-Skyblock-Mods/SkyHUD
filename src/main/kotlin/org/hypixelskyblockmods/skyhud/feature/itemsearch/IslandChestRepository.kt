@@ -115,7 +115,11 @@ object IslandChestRepository {
     fun onBlockChanged(pos: BlockPos, remainsChest: Boolean) {
         if (remainsChest) return
         ensureLoaded()
-        val removed = chests.values.filter { snapshot -> snapshot.key.positions.any { it == pos } }
+        val removedIdentities = IslandChestGeometry.containersRemovedByBreak(
+            chests.mapValues { it.value.key.positions },
+            pos,
+        )
+        val removed = removedIdentities.mapNotNull(chests::get)
         if (removed.isEmpty()) return
         removed.forEach { chests.remove(it.key.identity) }
         if (activeOpen?.key?.positions?.any { it == pos } == true) activeOpen = null
@@ -169,10 +173,7 @@ object IslandChestRepository {
 
     fun flush() = saveNow()
 
-    internal fun canonicalPositions(positions: List<BlockPos>): List<BlockPos> = positions
-        .distinct()
-        .sortedWith(compareBy<BlockPos>({ it.x }, { it.y }, { it.z }))
-        .map(BlockPos::immutable)
+    internal fun canonicalPositions(positions: List<BlockPos>): List<BlockPos> = IslandChestGeometry.canonical(positions)
 
     private fun snapshot(): List<SearchableItem> {
         ensureLoaded()
@@ -258,4 +259,14 @@ object IslandChestRepository {
         first.size == second.size && first.zip(second).all { (left, right) ->
             left.slot == right.slot && ItemStack.matches(left.stack, right.stack)
         }
+}
+
+internal object IslandChestGeometry {
+    fun canonical(positions: List<BlockPos>): List<BlockPos> = positions
+        .distinct()
+        .sortedWith(compareBy<BlockPos>({ it.x }, { it.y }, { it.z }))
+        .map(BlockPos::immutable)
+
+    fun containersRemovedByBreak(containers: Map<String, List<BlockPos>>, broken: BlockPos): Set<String> =
+        containers.filterValues { positions -> positions.any { it == broken } }.keys
 }

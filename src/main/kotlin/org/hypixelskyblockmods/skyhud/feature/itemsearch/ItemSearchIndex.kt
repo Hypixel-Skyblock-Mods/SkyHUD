@@ -64,11 +64,11 @@ object ItemFingerprintFactory {
             vanillaId = BuiltInRegistries.ITEM.getKey(normalized.item).toString(),
             skyblockId = skyblockId,
             cleanName = cleanName.lowercase(Locale.ROOT),
-            componentHash = sha256(encoded),
+            componentHash = hashComponentPayload(encoded),
         )
     }
 
-    private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
+    internal fun hashComponentPayload(value: String): String = MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
 }
@@ -115,8 +115,15 @@ class ItemSearchIndex private constructor(private val entries: List<ItemSearchEn
         val EMPTY = ItemSearchIndex(emptyList())
 
         fun build(items: List<SearchableItem>): ItemSearchIndex {
+            return build(items, allowEmptyStacks = false)
+        }
+
+        internal fun buildForTests(items: List<SearchableItem>): ItemSearchIndex =
+            build(items, allowEmptyStacks = true)
+
+        private fun build(items: List<SearchableItem>, allowEmptyStacks: Boolean): ItemSearchIndex {
             val buckets = linkedMapOf<ItemFingerprint, MutableList<MutableEntry>>()
-            items.filterNot { it.stack.isEmpty || it.amount <= 0 }.forEach { item ->
+            items.filterNot { (!allowEmptyStacks && it.stack.isEmpty) || it.amount <= 0 }.forEach { item ->
                 val bucket = buckets.getOrPut(item.fingerprint) { mutableListOf() }
                 val aggregate = bucket.firstOrNull { ItemStack.matches(it.displayStack.copyWithCount(1), item.stack.copyWithCount(1)) }
                     ?: MutableEntry(item).also(bucket::add)

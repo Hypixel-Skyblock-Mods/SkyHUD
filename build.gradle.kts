@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.gradle.jvm.tasks.Jar
 import org.gradle.language.jvm.tasks.ProcessResources
+import org.gradle.api.tasks.testing.Test
 import java.util.Properties
 
 plugins {
@@ -103,6 +104,8 @@ subprojects {
             }
         }
         add("compileOnly", "maven.modrinth:modmenu:${target.modMenu}")
+        add("testImplementation", "org.junit.jupiter:junit-jupiter:5.12.2")
+        add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher:1.12.2")
     }
 
     extensions.configure<org.gradle.api.plugins.JavaPluginExtension> {
@@ -136,10 +139,17 @@ subprojects {
             kotlin.srcDir(rootProject.file("src/main/kotlin"))
             kotlin.srcDir(rootProject.file("src/${target.minecraft}/kotlin"))
         }
+        sourceSets.named("test") {
+            kotlin.srcDir(rootProject.file("src/test/kotlin"))
+        }
     }
 
     tasks.withType<KotlinCompile>().configureEach {
         compilerOptions.jvmTarget.set(JvmTarget.JVM_25)
+    }
+
+    tasks.withType<Test>().configureEach {
+        useJUnitPlatform()
     }
 
     tasks.named<ProcessResources>("processResources") {

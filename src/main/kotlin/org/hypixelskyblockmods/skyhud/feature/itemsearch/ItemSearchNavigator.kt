@@ -12,8 +12,22 @@ import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
 
 object ItemSearchNavigator {
     fun navigate(item: SearchableItem) {
+        val route = itemSearchRoute(
+            item,
+            SkyblockApiItemSearchAdapter.currentRealm(),
+            SkyblockApiItemSearchAdapter.isOwnPrivateIsland(),
+            SkyHudConfigManager.config.huds.itemSearch.warpToIsland,
+        )
+        if (route == ItemSearchRoute.INFORMATIONAL) {
+            status("${item.location.label} is informational; there is no stable direct route.")
+            return
+        }
+        if (route == ItemSearchRoute.WRONG_REALM) {
+            status("${item.location.label} cannot be opened from the current realm.")
+            return
+        }
         when (val action = item.action) {
-            ItemNavigationAction.None -> status("${item.location.label} is informational; there is no stable direct route.")
+            ItemNavigationAction.None -> Unit
             is ItemNavigationAction.Command -> navigateCommand(item, action.command)
             is ItemNavigationAction.Storage -> navigateStorage(item, action)
             is ItemNavigationAction.Collection -> {
@@ -90,5 +104,45 @@ object ItemSearchNavigator {
 
     private fun status(message: String) {
         Minecraft.getInstance().player?.sendSystemMessage(Component.literal("[SkyHUD] $message"))
+    }
+}
+
+internal enum class ItemSearchRoute {
+    INFORMATIONAL,
+    WRONG_REALM,
+    COMMAND,
+    STORAGE,
+    COLLECTION,
+    INVENTORY,
+    ISLAND_HIGHLIGHT,
+    ISLAND_WARP,
+}
+
+internal fun itemSearchRoute(
+    item: SearchableItem,
+    currentRealm: InventoryRealm,
+    ownPrivateIsland: Boolean,
+    warpToIsland: Boolean,
+): ItemSearchRoute = when (val action = item.action) {
+    ItemNavigationAction.None -> ItemSearchRoute.INFORMATIONAL
+    is ItemNavigationAction.Command -> {
+        val requiresNormal = item.source in setOf(
+            ItemSourceId.EQUIPPED,
+            ItemSourceId.ACCESSORY_BAG,
+            ItemSourceId.SACKS,
+            ItemSourceId.SACK_OF_SACKS,
+            ItemSourceId.VAULT,
+        )
+        if (requiresNormal && currentRealm == InventoryRealm.RIFT) ItemSearchRoute.WRONG_REALM else ItemSearchRoute.COMMAND
+    }
+    is ItemNavigationAction.Storage ->
+        if (action.rift && currentRealm != InventoryRealm.RIFT) ItemSearchRoute.WRONG_REALM else ItemSearchRoute.STORAGE
+    is ItemNavigationAction.Collection -> ItemSearchRoute.COLLECTION
+    is ItemNavigationAction.Inventory ->
+        if (action.realm == currentRealm) ItemSearchRoute.INVENTORY else ItemSearchRoute.WRONG_REALM
+    is ItemNavigationAction.IslandChest -> when {
+        ownPrivateIsland -> ItemSearchRoute.ISLAND_HIGHLIGHT
+        warpToIsland -> ItemSearchRoute.ISLAND_WARP
+        else -> ItemSearchRoute.INFORMATIONAL
     }
 }

@@ -42,14 +42,9 @@ object SkyblockApiStorageAdapter {
     }
 
     private fun PlayerStorageInstance.toPage(type: StoragePageType): SkyblockApiStoragePage? {
-        val number = index + 1
-        val validRange = when (type) {
-            StoragePageType.ENDER_CHEST -> 1..9
-            StoragePageType.BACKPACK -> 1..18
-        }
-        if (number !in validRange) return null
+        val key = storagePageKeyFromApiIndex(type, index) ?: return null
         return SkyblockApiStoragePage(
-            key = StoragePageKey(type, number),
+            key = key,
             items = items.map(ItemStack::copy),
             updatedAtEpochMillis = lastUpdated.toEpochMilliseconds(),
         )
@@ -61,4 +56,13 @@ object SkyblockApiStorageAdapter {
     ): Boolean = actual != null &&
         expected.accountUuid == actual.accountUuid &&
         expected.profileName == actual.profileName
+}
+
+internal fun storagePageKeyFromApiIndex(type: StoragePageType, index: Int): StoragePageKey? {
+    val number = index + 1
+    val validRange = when (type) {
+        StoragePageType.ENDER_CHEST -> 1..9
+        StoragePageType.BACKPACK -> 1..18
+    }
+    return number.takeIf { it in validRange }?.let { StoragePageKey(type, it) }
 }
