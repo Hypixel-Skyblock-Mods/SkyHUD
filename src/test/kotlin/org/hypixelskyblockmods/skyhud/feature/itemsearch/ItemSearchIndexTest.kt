@@ -123,6 +123,34 @@ class ItemSearchIndexTest {
         assertEquals(listOf("Forge slot 1", "Forge slot 2 × 2", "Forge slot 3 × 3", "…and 7 more locations"), lines)
     }
 
+    @Test
+    fun `location picker sorts exact location amounts descending`() {
+        val fingerprint = fingerprint("iron")
+        val items = listOf(
+            item(ItemStack.EMPTY, 25, fingerprint, ItemLocation.Generic("Ender Chest", "ender-chest")),
+            item(ItemStack.EMPTY, 4_800, fingerprint, ItemLocation.Generic("Sack", "sack")),
+            item(ItemStack.EMPTY, 600, fingerprint, ItemLocation.Generic("Island Chest", "island-chest")),
+        )
+
+        val locations = ItemSearchIndex.buildForTests(items).all().single().locationsByDescendingAmount()
+
+        assertEquals(listOf(4_800L, 600L, 25L), locations.map(SearchableItem::amount))
+        assertEquals(listOf("sack", "island-chest", "ender-chest"), locations.map { it.location.identity })
+    }
+
+    @Test
+    fun `grid amounts use one decimal below ten units and whole units afterward`() {
+        assertEquals("", itemGridAmountLabel(1))
+        assertEquals("999", itemGridAmountLabel(999))
+        assertEquals("1k", itemGridAmountLabel(1_000))
+        assertEquals("4.8k", itemGridAmountLabel(4_800))
+        assertEquals("10k", itemGridAmountLabel(10_000))
+        assertEquals("10k", itemGridAmountLabel(10_999))
+        assertEquals("999k", itemGridAmountLabel(999_999))
+        assertEquals("1.5m", itemGridAmountLabel(1_500_000))
+        assertEquals("12m", itemGridAmountLabel(12_750_000))
+    }
+
     private fun item(
         stack: ItemStack,
         amount: Long,

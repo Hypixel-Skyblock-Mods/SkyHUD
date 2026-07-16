@@ -181,6 +181,11 @@ data class ItemSearchEntry(
         it.origin != ItemDataOrigin.LIVE_MENU && it.origin != ItemDataOrigin.LIVE_PLAYER && now - updated > staleAfterMillis
     }
 
+    internal fun locationsByDescendingAmount(): List<SearchableItem> = locations.sortedWith(
+        compareByDescending<SearchableItem> { it.amount }
+            .thenBy(String.CASE_INSENSITIVE_ORDER) { it.location.label },
+    )
+
     internal fun locationTooltipLines(maxLocations: Int = 8): List<String> {
         val limit = maxLocations.coerceAtLeast(1)
         val lines = locations.take(limit).map { item ->

@@ -12,6 +12,7 @@ import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudControls
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
+import java.util.Locale
 
 class ItemSearchScreen(
     initialQuery: String,
@@ -93,7 +94,9 @@ class ItemSearchScreen(
     }
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        SkyHudBackdrop.renderPanelBlur(graphics, SkyHudBackdrop.Region(panelX(), panelY(), panelWidth(), panelHeight()))
+        if (locationEntry == null) {
+            SkyHudBackdrop.renderPanelBlur(graphics, SkyHudBackdrop.Region(panelX(), panelY(), panelWidth(), panelHeight()))
+        }
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
@@ -120,13 +123,18 @@ class ItemSearchScreen(
         drawCategories(graphics, mouseX, mouseY)
         drawResults(graphics, mouseX, mouseY)
         super.extractRenderState(graphics, mouseX, mouseY, delta)
-        locationEntry?.let { drawLocationPicker(graphics, it, mouseX, mouseY) }
+        locationEntry?.let {
+            graphics.nextStratum()
+            graphics.blurBeforeThisStratum()
+            graphics.nextStratum()
+            drawLocationPicker(graphics, it, mouseX, mouseY)
+        }
     }
 
     private fun drawSortControls(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val sortX = sortX()
         val y = panelY() + 5
-        val sortHovered = mouseX in sortX until (sortX + 72) && mouseY in y until (y + 18)
+        val sortHovered = locationEntry == null && mouseX in sortX until (sortX + 72) && mouseY in y until (y + 18)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
             sortX,
@@ -138,7 +146,7 @@ class ItemSearchScreen(
         )
         SkyHudControls.centeredText(graphics, font, sort.label(), sortX, y, 72, 18, SkyHudTheme.TEXT)
         val directionX = sortX + 75
-        val directionHovered = mouseX in directionX until (directionX + 20) && mouseY in y until (y + 18)
+        val directionHovered = locationEntry == null && mouseX in directionX until (directionX + 20) && mouseY in y until (y + 18)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
             directionX,
@@ -162,7 +170,7 @@ class ItemSearchScreen(
         val bounds = mutableListOf<CategoryBounds>()
         categories.forEachIndexed { index, value ->
             val y = startY + index * pitch
-            val hovered = mouseX in x until (x + width) && mouseY in y until (y + buttonHeight)
+            val hovered = locationEntry == null && mouseX in x until (x + width) && mouseY in y until (y + buttonHeight)
             val selected = value == category
             SkyHudTheme.outlinedRoundedRect(
                 graphics,
@@ -223,7 +231,7 @@ class ItemSearchScreen(
         visible.forEachIndexed { index, entry ->
             val slotX = left + (index % columns) * slotPitch
             val slotY = top + (index / columns) * slotPitch
-            val hovered = mouseX in slotX until (slotX + slotSize) && mouseY in slotY until (slotY + slotSize)
+            val hovered = locationEntry == null && mouseX in slotX until (slotX + slotSize) && mouseY in slotY until (slotY + slotSize)
             graphics.fill(
                 slotX,
                 slotY,
@@ -233,7 +241,7 @@ class ItemSearchScreen(
             )
             val stack = entry.displayStack
             graphics.item(stack, slotX + 3, slotY + 3)
-            graphics.itemDecorations(font, stack, slotX + 3, slotY + 3, amountLabel(entry.totalAmount))
+            graphics.itemDecorations(font, stack, slotX + 3, slotY + 3, itemGridAmountLabel(entry.totalAmount))
             if (config.staleWarnings && entry.isStale(System.currentTimeMillis(), 86_400_000L)) {
                 graphics.text(font, "!", slotX + 15, slotY + 2, 0xFFFFB84D.toInt(), false)
             }
@@ -277,11 +285,12 @@ class ItemSearchScreen(
         val listTop = y + 39
         val listBottom = y + modalHeight - 9
         val visibleRows = ((listBottom - listTop) / 31).coerceAtLeast(1)
-        val maxScroll = (entry.locations.size - visibleRows).coerceAtLeast(0)
+        val locations = entry.locationsByDescendingAmount()
+        val maxScroll = (locations.size - visibleRows).coerceAtLeast(0)
         locationScroll = locationScroll.coerceIn(0, maxScroll)
         val bounds = mutableListOf<LocationBounds>()
         graphics.enableScissor(x + 5, listTop, x + modalWidth - 5, listBottom)
-        entry.locations.drop(locationScroll).take(visibleRows).forEachIndexed { index, item ->
+        locations.drop(locationScroll).take(visibleRows).forEachIndexed { index, item ->
             val rowY = listTop + index * 31
             val hovered = mouseX in (x + 8) until (x + modalWidth - 8) && mouseY in rowY until (rowY + 27)
             SkyHudTheme.outlinedRoundedRect(
@@ -294,9 +303,21 @@ class ItemSearchScreen(
                 if (hovered) SkyHudTheme.PRIMARY else SkyHudTheme.BORDER,
             )
             graphics.item(item.stack, x + 13, rowY + 5)
-            graphics.text(font, item.location.label, x + 35, rowY + 5, SkyHudTheme.TEXT, false)
+            val amount = "× ${item.amount}"
+            val amountX = x + modalWidth - 14 - font.width(amount)
+            val labelWidth = (amountX - (x + 35) - 5).coerceAtLeast(1)
+            graphics.text(font, clipText(item.location.label, labelWidth), x + 35, rowY + 5, SkyHudTheme.TEXT, false)
+            graphics.text(font, amount, amountX, rowY + 5, SkyHudTheme.PRIMARY, false)
             val seen = lastSeenLabel(item)
             graphics.text(font, seen, x + 35, rowY + 16, SkyHudTheme.TEXT_MUTED, false)
+            if (hovered) {
+                val tooltip = getTooltipFromItem(minecraft, item.stack).toMutableList()
+                tooltip += Component.empty()
+                tooltip += Component.literal("Location").withStyle(ChatFormatting.GRAY)
+                tooltip += Component.literal(item.location.label).withStyle(ChatFormatting.AQUA)
+                tooltip += Component.literal("Amount: ${item.amount}").withStyle(ChatFormatting.GRAY)
+                graphics.setTooltipForNextFrame(font, tooltip, item.stack.tooltipImage, mouseX, mouseY)
+            }
             bounds += LocationBounds(item, x + 8, rowY, modalWidth - 16, 27)
         }
         graphics.disableScissor()
@@ -391,12 +412,11 @@ class ItemSearchScreen(
     private fun searchX(): Int = sortX() - searchWidth() - 8
     private fun sortX(): Int = panelX() + panelWidth() - 103
 
-    private fun amountLabel(amount: Long): String = when {
-        amount >= 1_000_000_000 -> "%.1fb".format(amount / 1_000_000_000.0)
-        amount >= 1_000_000 -> "%.1fm".format(amount / 1_000_000.0)
-        amount >= 10_000 -> "%.1fk".format(amount / 1_000.0)
-        amount > 1 -> amount.toString()
-        else -> ""
+    private fun clipText(text: String, maxWidth: Int): String {
+        if (font.width(text) <= maxWidth) return text
+        var clipped = text
+        while (clipped.isNotEmpty() && font.width("$clipped...") > maxWidth) clipped = clipped.dropLast(1)
+        return "$clipped..."
     }
 
     private fun lastSeenLabel(item: SearchableItem): String {
@@ -410,6 +430,24 @@ class ItemSearchScreen(
             else -> "Seen ${age / 86_400_000}d ago"
         }
     }
+}
+
+internal fun itemGridAmountLabel(amount: Long): String = when {
+    amount >= 1_000_000_000 -> compactGridAmount(amount, 1_000_000_000L, "b")
+    amount >= 1_000_000 -> compactGridAmount(amount, 1_000_000L, "m")
+    amount >= 1_000 -> compactGridAmount(amount, 1_000L, "k")
+    amount > 1 -> amount.toString()
+    else -> ""
+}
+
+private fun compactGridAmount(amount: Long, divisor: Long, suffix: String): String {
+    val scaled = amount.toDouble() / divisor
+    val value = if (scaled < 10.0) {
+        String.format(Locale.ROOT, "%.1f", scaled).removeSuffix(".0")
+    } else {
+        (amount / divisor).toString()
+    }
+    return "$value$suffix"
 }
 
 private fun ItemSourceCategory.label(): String = when (this) {
