@@ -7,7 +7,7 @@ inventory menus with clean, modern interfaces.
 
 ### Item Search
 
-- Press `O` while on SkyBlock, or run `/skyhud search [query]`, to open a
+- Press `I` while on SkyBlock, or run `/skyhud search [query]`, to open a
   standalone SkyHUD-native finder without a player-inventory panel. The bind
   appears as **Open Item Search** under Minecraft Controls > SkyHUD.
 - Searches the active SkyBlock profile across live and cached inventory,

@@ -22,8 +22,8 @@ import org.junit.jupiter.api.Test
 
 class ItemSearchInfrastructureTest {
     @Test
-    fun `item search is a top level config section defaulting to O`() {
-        assertEquals(InputConstants.KEY_O, SkyHudConfig().itemSearch.keybind)
+    fun `item search is a top level config section defaulting to I`() {
+        assertEquals(InputConstants.KEY_I, SkyHudConfig().itemSearch.keybind)
     }
 
     @Test

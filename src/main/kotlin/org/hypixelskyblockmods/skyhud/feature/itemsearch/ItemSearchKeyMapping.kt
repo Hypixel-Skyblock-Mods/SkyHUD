@@ -9,7 +9,7 @@ import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 
 object ItemSearchKeyMapping {
     private const val TRANSLATION_KEY = "key.skyhud.item_search"
-    private const val DEFAULT_KEY = InputConstants.KEY_O
+    private const val DEFAULT_KEY = InputConstants.KEY_I
 
     private lateinit var mapping: KeyMapping
     private var synchronized = false

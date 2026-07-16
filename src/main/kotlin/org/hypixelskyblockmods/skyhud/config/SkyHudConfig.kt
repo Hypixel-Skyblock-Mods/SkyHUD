@@ -153,9 +153,9 @@ class ItemSearchConfig {
 
     @field:Expose
     @field:ConfigOption(name = "Keybind", desc = "Open Item Search while on SkyBlock. This stays synchronized with Minecraft Controls > SkyHUD.")
-    @field:ConfigEditorKeybind(defaultKey = InputConstants.KEY_O)
+    @field:ConfigEditorKeybind(defaultKey = InputConstants.KEY_I)
     @JvmField
-    var keybind: Int = InputConstants.KEY_O
+    var keybind: Int = InputConstants.KEY_I
 
     @field:Expose
     @field:ConfigOption(name = "Preserve Last Search", desc = "Keep the query and category when reopening Item Search during this client session.")
