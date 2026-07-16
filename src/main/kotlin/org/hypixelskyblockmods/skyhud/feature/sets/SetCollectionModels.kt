@@ -1,13 +1,15 @@
 package org.hypixelskyblockmods.skyhud.feature.sets
 
 import com.google.gson.GsonBuilder
-import java.util.UUID
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.item.ItemStack
+import org.hypixelskyblockmods.skyhud.feature.itemsearch.SkyBlockProfileStore
+import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyBlockProfileIdentity
+import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiStorageAdapter
+import org.hypixelskyblockmods.skyhud.util.ItemStackSerialization
 import org.hypixelskyblockmods.skyhud.util.VanillaItemIds
-import org.hypixelskyblockmods.skyhud.util.ProfileItemCache
 import org.slf4j.LoggerFactory
 
 data class SetCollectionTarget(
@@ -61,7 +63,10 @@ class SetCollectionRepository(
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private val pages = sortedMapOf<Int, CachedSetPage>()
     private val equippedPattern = Regex("^Slot [0-9]+: Equipped$", RegexOption.IGNORE_CASE)
-    private var loadedProfile: UUID? = null
+    private data class ProfileKey(val accountUuid: java.util.UUID, val profileName: String)
+
+    private var loadedProfile: ProfileKey? = null
+    private var activeIdentity: SkyBlockProfileIdentity? = null
     private var lastSavedJson: String? = null
 
     fun remember(page: Int, menu: ChestMenu) {
@@ -123,12 +128,28 @@ class SetCollectionRepository(
         }
     }
 
+    fun snapshot(): List<CachedSetSlot> {
+        ensureLoaded()
+        return pages.values.flatMap(CachedSetPage::slots).map { set ->
+            set.copy(items = set.items.map(ItemStack::copy), selector = set.selector.copy())
+        }
+    }
+
+    fun resetSession() {
+        pages.clear()
+        loadedProfile = null
+        activeIdentity = null
+        lastSavedJson = null
+    }
+
     private fun ensureLoaded() {
-        val profile = ProfileItemCache.currentProfile()
+        val identity = SkyblockApiStorageAdapter.currentProfile()
+        val profile = identity?.let { ProfileKey(it.accountUuid, it.profileName) }
         if (loadedProfile == profile) return
         loadedProfile = profile
+        activeIdentity = identity
         pages.clear()
-        lastSavedJson = ProfileItemCache.read(cacheName, profile)
+        lastSavedJson = identity?.let { SkyBlockProfileStore.read(cacheName, it) }
         val json = lastSavedJson ?: return
         runCatching {
             val saved = gson.fromJson(json, SavedSetCache::class.java)
@@ -140,8 +161,8 @@ class SetCollectionRepository(
                             page = set.page,
                             index = set.index,
                             id = set.id,
-                            items = set.items.map(ProfileItemCache::decode),
-                            selector = ProfileItemCache.decode(set.selector),
+                            items = set.items.map(ItemStackSerialization::decode),
+                            selector = ItemStackSerialization.decode(set.selector),
                             selected = set.selected,
                             locked = set.locked,
                             selectable = set.selectable,
@@ -155,15 +176,15 @@ class SetCollectionRepository(
     }
 
     private fun save() {
-        val profile = loadedProfile ?: ProfileItemCache.currentProfile()
+        val profile = activeIdentity ?: return
         val saved = SavedSetCache(
             pages.values.flatMap(CachedSetPage::slots).map { set ->
                 SavedSet(
                     page = set.page,
                     index = set.index,
                     id = set.id,
-                    items = set.items.map(ProfileItemCache::encode).toMutableList(),
-                    selector = ProfileItemCache.encode(set.selector),
+                    items = set.items.map(ItemStackSerialization::encode).toMutableList(),
+                    selector = ItemStackSerialization.encode(set.selector),
                     selected = set.selected,
                     locked = set.locked,
                     selectable = set.selectable,
@@ -172,7 +193,7 @@ class SetCollectionRepository(
         )
         val json = gson.toJson(saved)
         if (json == lastSavedJson) return
-        if (ProfileItemCache.write(cacheName, profile, json)) lastSavedJson = json
+        if (SkyBlockProfileStore.write(cacheName, profile, json)) lastSavedJson = json
     }
 
     private fun pageMatches(previous: CachedSetPage?, current: CachedSetPage): Boolean {
@@ -185,7 +206,7 @@ class SetCollectionRepository(
                 first.locked == second.locked &&
                 first.selectable == second.selectable &&
                 ItemStack.matches(first.selector, second.selector) &&
-                ProfileItemCache.stacksMatch(first.items, second.items)
+                ItemStackSerialization.stacksMatch(first.items, second.items)
         }
     }
 }

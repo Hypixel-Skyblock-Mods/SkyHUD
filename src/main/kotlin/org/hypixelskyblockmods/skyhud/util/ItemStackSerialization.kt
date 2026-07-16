@@ -49,6 +49,9 @@ object ItemStackSerialization {
         }
     }
 
+    fun stacksMatch(first: List<ItemStack>, second: List<ItemStack>): Boolean =
+        first.size == second.size && first.indices.all { ItemStack.matches(first[it], second[it]) }
+
     private fun registryOps(): RegistryOps<Tag> {
         val registries = Minecraft.getInstance().connection?.registryAccess() ?: RegistryAccess.EMPTY
         return RegistryOps.create(NbtOps.INSTANCE, registries)

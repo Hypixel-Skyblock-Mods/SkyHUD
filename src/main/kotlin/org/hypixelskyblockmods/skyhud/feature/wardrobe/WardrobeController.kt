@@ -92,6 +92,22 @@ object WardrobeController {
         if (transition.acceptsBackingUpdates()) overlay.refreshBackingMenu(client.player?.containerMenu)
     }
 
+    fun onProfileChanged() {
+        val client = Minecraft.getInstance()
+        val overlay = activeScreen
+        val closeContainer = overlay != null || currentTarget != null || originalMenu != null
+        transition.clear(overlay)
+        activeScreen = null
+        currentTarget = null
+        pendingAction = null
+        showOriginalNext = false
+        originalMenu = null
+        deferredScreen = null
+        WardrobeRepository.sets.resetSession()
+        if (closeContainer) client.player?.closeContainer()
+        if (overlay != null && ScreenCompat.currentScreen() === overlay) ScreenCompat.setScreen(null)
+    }
+
     private fun onOverlayClosed() {
         transition.clear(activeScreen)
         activeScreen = null

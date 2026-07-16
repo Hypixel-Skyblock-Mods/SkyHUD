@@ -1,12 +1,14 @@
 package org.hypixelskyblockmods.skyhud.feature.loadouts
 
 import com.google.gson.GsonBuilder
-import java.util.UUID
 import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.item.ItemStack
+import org.hypixelskyblockmods.skyhud.feature.itemsearch.SkyBlockProfileStore
+import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyBlockProfileIdentity
+import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiStorageAdapter
 import org.hypixelskyblockmods.skyhud.util.ItemText
-import org.hypixelskyblockmods.skyhud.util.ProfileItemCache
+import org.hypixelskyblockmods.skyhud.util.ItemStackSerialization
 import org.hypixelskyblockmods.skyhud.util.VanillaItemIds
 import org.slf4j.LoggerFactory
 
@@ -143,7 +145,10 @@ object LoadoutRepository {
     private const val hotmSlot = 18
     private const val powerStoneSlot = 27
     private const val tuningsSlot = 36
-    private var loadedProfile: UUID? = null
+    private data class ProfileKey(val accountUuid: java.util.UUID, val profileName: String)
+
+    private var loadedProfile: ProfileKey? = null
+    private var activeIdentity: SkyBlockProfileIdentity? = null
     private var lastSavedJson: String? = null
 
     fun remember(page: Int, menu: ChestMenu) {
@@ -172,10 +177,10 @@ object LoadoutRepository {
             val observedItems = observedArmor + observedEquipment +
                 listOf(observedPet, observedHotm, observedHotf, observedPowerStone, observedTunings)
             val observedFromAnotherLoadout = allRemembered.firstOrNull {
-                it.id != id && !it.empty && ProfileItemCache.stacksMatch(observedItems, it.items)
+                it.id != id && !it.empty && ItemStackSerialization.stacksMatch(observedItems, it.items)
             }
             val transitionalSelection = selected && observedFromAnotherLoadout != null &&
-                (remembered == null || !ProfileItemCache.stacksMatch(observedItems, remembered.items))
+                (remembered == null || !ItemStackSerialization.stacksMatch(observedItems, remembered.items))
             val useObservedDetails = selected && !transitionalSelection
             val armor = observedArmor.mapIndexed { index, observed ->
                 mergeDetail(
@@ -286,12 +291,37 @@ object LoadoutRepository {
         }
     }
 
+    fun snapshot(): List<CachedLoadout> {
+        ensureLoaded()
+        return pages.values.flatMap(CachedLoadoutPage::loadouts).map { loadout ->
+            loadout.copy(
+                selector = loadout.selector.copy(),
+                armor = loadout.armor.map(ItemStack::copy),
+                equipment = loadout.equipment.map(ItemStack::copy),
+                pet = loadout.pet.copy(),
+                hotm = loadout.hotm.copy(),
+                hotf = loadout.hotf.copy(),
+                powerStone = loadout.powerStone.copy(),
+                tunings = loadout.tunings.copy(),
+            )
+        }
+    }
+
+    fun resetSession() {
+        pages.clear()
+        loadedProfile = null
+        activeIdentity = null
+        lastSavedJson = null
+    }
+
     private fun ensureLoaded() {
-        val profile = ProfileItemCache.currentProfile()
+        val identity = SkyblockApiStorageAdapter.currentProfile()
+        val profile = identity?.let { ProfileKey(it.accountUuid, it.profileName) }
         if (loadedProfile == profile) return
         loadedProfile = profile
+        activeIdentity = identity
         pages.clear()
-        lastSavedJson = ProfileItemCache.read("loadouts", profile)
+        lastSavedJson = identity?.let { SkyBlockProfileStore.read("loadouts", it) }
         val json = lastSavedJson ?: return
         runCatching {
             val saved = gson.fromJson(json, SavedLoadoutCache::class.java)
@@ -304,14 +334,14 @@ object LoadoutRepository {
                             page = loadout.page,
                             inventorySlot = loadout.inventorySlot,
                             name = loadout.name,
-                            selector = ProfileItemCache.decode(loadout.selector),
-                            armor = loadout.armor.map(ProfileItemCache::decode),
-                            equipment = loadout.equipment.map(ProfileItemCache::decode),
-                            pet = ProfileItemCache.decode(loadout.pet),
-                            hotm = ProfileItemCache.decode(loadout.hotm),
-                            hotf = ProfileItemCache.decode(loadout.hotf),
-                            powerStone = ProfileItemCache.decode(loadout.powerStone),
-                            tunings = ProfileItemCache.decode(loadout.tunings),
+                            selector = ItemStackSerialization.decode(loadout.selector),
+                            armor = loadout.armor.map(ItemStackSerialization::decode),
+                            equipment = loadout.equipment.map(ItemStackSerialization::decode),
+                            pet = ItemStackSerialization.decode(loadout.pet),
+                            hotm = ItemStackSerialization.decode(loadout.hotm),
+                            hotf = ItemStackSerialization.decode(loadout.hotf),
+                            powerStone = ItemStackSerialization.decode(loadout.powerStone),
+                            tunings = ItemStackSerialization.decode(loadout.tunings),
                             selected = loadout.selected,
                             locked = loadout.locked,
                             empty = loadout.empty,
@@ -329,7 +359,7 @@ object LoadoutRepository {
     }
 
     private fun save() {
-        val profile = loadedProfile ?: ProfileItemCache.currentProfile()
+        val profile = activeIdentity ?: return
         val saved = SavedLoadoutCache(
             pages.values.flatMap(CachedLoadoutPage::loadouts).map { loadout ->
                 SavedLoadout(
@@ -337,14 +367,14 @@ object LoadoutRepository {
                     page = loadout.page,
                     inventorySlot = loadout.inventorySlot,
                     name = loadout.name,
-                    selector = ProfileItemCache.encode(loadout.selector),
-                    armor = loadout.armor.map(ProfileItemCache::encode).toMutableList(),
-                    equipment = loadout.equipment.map(ProfileItemCache::encode).toMutableList(),
-                    pet = ProfileItemCache.encode(loadout.pet),
-                    hotm = ProfileItemCache.encode(loadout.hotm),
-                    hotf = ProfileItemCache.encode(loadout.hotf),
-                    powerStone = ProfileItemCache.encode(loadout.powerStone),
-                    tunings = ProfileItemCache.encode(loadout.tunings),
+                    selector = ItemStackSerialization.encode(loadout.selector),
+                    armor = loadout.armor.map(ItemStackSerialization::encode).toMutableList(),
+                    equipment = loadout.equipment.map(ItemStackSerialization::encode).toMutableList(),
+                    pet = ItemStackSerialization.encode(loadout.pet),
+                    hotm = ItemStackSerialization.encode(loadout.hotm),
+                    hotf = ItemStackSerialization.encode(loadout.hotf),
+                    powerStone = ItemStackSerialization.encode(loadout.powerStone),
+                    tunings = ItemStackSerialization.encode(loadout.tunings),
                     selected = loadout.selected,
                     locked = loadout.locked,
                     empty = loadout.empty,
@@ -355,7 +385,7 @@ object LoadoutRepository {
         )
         val json = gson.toJson(saved)
         if (json == lastSavedJson) return
-        if (ProfileItemCache.write("loadouts", profile, json)) lastSavedJson = json
+        if (SkyBlockProfileStore.write("loadouts", profile, json)) lastSavedJson = json
     }
 
     private fun pageMatches(previous: CachedLoadoutPage?, current: CachedLoadoutPage): Boolean {
@@ -370,7 +400,7 @@ object LoadoutRepository {
                 first.empty == second.empty &&
                 first.renameAction == second.renameAction &&
                 ItemStack.matches(first.selector, second.selector) &&
-                ProfileItemCache.stacksMatch(first.items, second.items)
+                ItemStackSerialization.stacksMatch(first.items, second.items)
         }
     }
 
