@@ -29,6 +29,7 @@ data class CachedLoadout(
     val locked: Boolean,
     val empty: Boolean,
     val renameAction: LoadoutClickAction,
+    val updatedAtEpochMillis: Long?,
 ) {
     val items: List<ItemStack>
         get() = armor + equipment + listOf(pet, hotm, hotf, powerStone, tunings)
@@ -109,27 +110,31 @@ object LoadoutLayout {
 }
 
 object LoadoutRepository {
+    private data class SavedIndexedItem(var index: Int = 0, var stack: String = "")
+
     private data class SavedLoadout(
         var id: Int = 1,
         var page: Int = 1,
         var inventorySlot: Int = 0,
         var name: String = "",
         var selector: String = "",
-        var armor: MutableList<String> = mutableListOf(),
-        var equipment: MutableList<String> = mutableListOf(),
-        var pet: String = "",
-        var hotm: String = "",
-        var hotf: String = "",
-        var powerStone: String = "",
-        var tunings: String = "",
+        var armor: MutableList<SavedIndexedItem> = mutableListOf(),
+        var equipment: MutableList<SavedIndexedItem> = mutableListOf(),
+        var pet: String? = null,
+        var hotm: String? = null,
+        var hotf: String? = null,
+        var powerStone: String? = null,
+        var tunings: String? = null,
         var selected: Boolean = false,
         var locked: Boolean = false,
         var empty: Boolean = false,
         var renameButton: Int = 1,
         var renameInput: String = ContainerInput.PICKUP.name,
+        var updatedAtEpochMillis: Long? = null,
     )
 
     private data class SavedLoadoutCache(
+        var schemaVersion: Int = 1,
         var loadouts: MutableList<SavedLoadout> = mutableListOf(),
     )
 
@@ -150,10 +155,12 @@ object LoadoutRepository {
     private var loadedProfile: ProfileKey? = null
     private var activeIdentity: SkyBlockProfileIdentity? = null
     private var lastSavedJson: String? = null
+    private var saveAfterEpochMillis: Long? = null
 
     fun remember(page: Int, menu: ChestMenu) {
         ensureLoaded()
         if (LoadoutLayout.iconSlots(page).any { menu.getSlot(it).item.isEmpty }) return
+        val observedAt = System.currentTimeMillis()
         val previous = pages[page]?.loadouts?.associateBy(CachedLoadout::id).orEmpty()
         val allRemembered = pages.values.flatMap(CachedLoadoutPage::loadouts)
         val loadouts = LoadoutLayout.iconSlots(page).mapIndexed { position, inventorySlot ->
@@ -255,12 +262,16 @@ object LoadoutRepository {
                 locked = locked,
                 empty = unused,
                 renameAction = renameAction(lore),
+                updatedAtEpochMillis = observedAt,
             )
         }
         val cachedPage = CachedLoadoutPage(page, loadouts)
-        if (!pageMatches(pages[page], cachedPage)) {
+        val previousPage = pages[page]
+        val refreshTimestamp = previousPage?.loadouts?.mapNotNull(CachedLoadout::updatedAtEpochMillis)?.minOrNull()
+            ?.let { observedAt - it >= 60_000L } != false
+        if (!pageMatches(previousPage, cachedPage) || refreshTimestamp) {
             pages[page] = cachedPage
-            save()
+            scheduleSave()
         }
     }
 
@@ -273,6 +284,7 @@ object LoadoutRepository {
                 },
             )
         }
+        scheduleSave()
     }
 
     fun page(page: Int): CachedLoadoutPage? {
@@ -308,11 +320,19 @@ object LoadoutRepository {
     }
 
     fun resetSession() {
+        saveNow()
         pages.clear()
         loadedProfile = null
         activeIdentity = null
         lastSavedJson = null
+        saveAfterEpochMillis = null
     }
+
+    fun onClientTick() {
+        saveAfterEpochMillis?.let { if (System.currentTimeMillis() >= it) saveNow() }
+    }
+
+    fun flush() = saveNow()
 
     fun clearCurrentProfile() {
         val profile = SkyblockApiStorageAdapter.currentProfile() ?: return
@@ -320,6 +340,7 @@ object LoadoutRepository {
         loadedProfile = ProfileKey(profile.accountUuid, profile.profileName)
         activeIdentity = profile
         lastSavedJson = null
+        saveAfterEpochMillis = null
         SkyBlockProfileStore.clear("loadouts", profile)
     }
 
@@ -344,13 +365,13 @@ object LoadoutRepository {
                             inventorySlot = loadout.inventorySlot,
                             name = loadout.name,
                             selector = ItemStackSerialization.decode(loadout.selector),
-                            armor = loadout.armor.map(ItemStackSerialization::decode),
-                            equipment = loadout.equipment.map(ItemStackSerialization::decode),
-                            pet = ItemStackSerialization.decode(loadout.pet),
-                            hotm = ItemStackSerialization.decode(loadout.hotm),
-                            hotf = ItemStackSerialization.decode(loadout.hotf),
-                            powerStone = ItemStackSerialization.decode(loadout.powerStone),
-                            tunings = ItemStackSerialization.decode(loadout.tunings),
+                            armor = decodeIndexed(loadout.armor, 4),
+                            equipment = decodeIndexed(loadout.equipment, 4),
+                            pet = ItemStackSerialization.decode(loadout.pet.orEmpty()),
+                            hotm = ItemStackSerialization.decode(loadout.hotm.orEmpty()),
+                            hotf = ItemStackSerialization.decode(loadout.hotf.orEmpty()),
+                            powerStone = ItemStackSerialization.decode(loadout.powerStone.orEmpty()),
+                            tunings = ItemStackSerialization.decode(loadout.tunings.orEmpty()),
                             selected = loadout.selected,
                             locked = loadout.locked,
                             empty = loadout.empty,
@@ -358,6 +379,7 @@ object LoadoutRepository {
                                 loadout.renameButton,
                                 runCatching { ContainerInput.valueOf(loadout.renameInput) }.getOrDefault(ContainerInput.PICKUP),
                             ),
+                            updatedAtEpochMillis = loadout.updatedAtEpochMillis?.takeIf { it > 0 },
                         )
                     },
                 )
@@ -367,28 +389,34 @@ object LoadoutRepository {
         }
     }
 
-    private fun save() {
+    private fun scheduleSave() {
+        if (activeIdentity != null) saveAfterEpochMillis = System.currentTimeMillis() + 500L
+    }
+
+    private fun saveNow() {
+        saveAfterEpochMillis = null
         val profile = activeIdentity ?: return
         val saved = SavedLoadoutCache(
-            pages.values.flatMap(CachedLoadoutPage::loadouts).map { loadout ->
+            loadouts = pages.values.flatMap(CachedLoadoutPage::loadouts).map { loadout ->
                 SavedLoadout(
                     id = loadout.id,
                     page = loadout.page,
                     inventorySlot = loadout.inventorySlot,
                     name = loadout.name,
                     selector = ItemStackSerialization.encode(loadout.selector),
-                    armor = loadout.armor.map(ItemStackSerialization::encode).toMutableList(),
-                    equipment = loadout.equipment.map(ItemStackSerialization::encode).toMutableList(),
-                    pet = ItemStackSerialization.encode(loadout.pet),
-                    hotm = ItemStackSerialization.encode(loadout.hotm),
-                    hotf = ItemStackSerialization.encode(loadout.hotf),
-                    powerStone = ItemStackSerialization.encode(loadout.powerStone),
-                    tunings = ItemStackSerialization.encode(loadout.tunings),
+                    armor = encodeIndexed(loadout.armor),
+                    equipment = encodeIndexed(loadout.equipment),
+                    pet = encodePresent(loadout.pet),
+                    hotm = encodePresent(loadout.hotm),
+                    hotf = encodePresent(loadout.hotf),
+                    powerStone = encodePresent(loadout.powerStone),
+                    tunings = encodePresent(loadout.tunings),
                     selected = loadout.selected,
                     locked = loadout.locked,
                     empty = loadout.empty,
                     renameButton = loadout.renameAction.button,
                     renameInput = loadout.renameAction.input.name,
+                    updatedAtEpochMillis = loadout.updatedAtEpochMillis,
                 )
             }.toMutableList(),
         )
@@ -396,6 +424,18 @@ object LoadoutRepository {
         if (json == lastSavedJson) return
         if (SkyBlockProfileStore.write("loadouts", profile, json)) lastSavedJson = json
     }
+
+    private fun encodeIndexed(stacks: List<ItemStack>): MutableList<SavedIndexedItem> = stacks.mapIndexedNotNull { index, stack ->
+        encodePresent(stack)?.let { SavedIndexedItem(index, it) }
+    }.toMutableList()
+
+    private fun decodeIndexed(items: List<SavedIndexedItem>, size: Int): List<ItemStack> =
+        MutableList(size) { ItemStack.EMPTY }.also { result ->
+            items.forEach { item -> if (item.index in result.indices) result[item.index] = ItemStackSerialization.decode(item.stack) }
+        }
+
+    private fun encodePresent(stack: ItemStack): String? =
+        stack.takeUnless(ItemStack::isEmpty)?.let(ItemStackSerialization::encode)?.takeIf(String::isNotBlank)
 
     private fun pageMatches(previous: CachedLoadoutPage?, current: CachedLoadoutPage): Boolean {
         if (previous == null || previous.loadouts.size != current.loadouts.size) return false

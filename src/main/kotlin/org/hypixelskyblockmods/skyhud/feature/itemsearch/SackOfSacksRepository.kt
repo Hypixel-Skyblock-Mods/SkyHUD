@@ -18,6 +18,7 @@ object SackOfSacksRepository {
     private var loadedProfile: ProfileKey? = null
     private var activeIdentity: SkyBlockProfileIdentity? = null
     private var lastSavedJson: String? = null
+    private var saveAfterEpochMillis: Long? = null
 
     fun initializeSource() {
         ItemSourceRegistry.register(ItemSourceId.SACK_OF_SACKS, ::snapshot)
@@ -30,15 +31,23 @@ object SackOfSacksRepository {
         if (items.size == filtered.size && items.zip(filtered).all { (a, b) -> a.first == b.first && ItemStack.matches(a.second, b.second) }) return
         items = filtered
         updatedAtEpochMillis = System.currentTimeMillis()
-        save()
+        if (activeIdentity != null) saveAfterEpochMillis = System.currentTimeMillis() + 500L
     }
 
+    fun onClientTick() {
+        saveAfterEpochMillis?.let { if (System.currentTimeMillis() >= it) saveNow() }
+    }
+
+    fun flush() = saveNow()
+
     fun resetSession() {
+        saveNow()
         items = emptyList()
         updatedAtEpochMillis = null
         loadedProfile = null
         activeIdentity = null
         lastSavedJson = null
+        saveAfterEpochMillis = null
     }
 
     fun clearCurrentProfile() {
@@ -47,6 +56,7 @@ object SackOfSacksRepository {
         updatedAtEpochMillis = null
         SkyBlockProfileStore.clear("sack-of-sacks", profile)
         lastSavedJson = null
+        saveAfterEpochMillis = null
     }
 
     private fun snapshot(): List<SearchableItem> {
@@ -81,7 +91,8 @@ object SackOfSacksRepository {
         }
     }
 
-    private fun save() {
+    private fun saveNow() {
+        saveAfterEpochMillis = null
         val profile = activeIdentity ?: return
         val json = gson.toJson(
             SavedData(

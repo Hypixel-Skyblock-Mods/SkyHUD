@@ -21,6 +21,7 @@ object SkyHudRepositoryItemSources {
                 ItemLocation.Collection("Loadout", loadout.page, loadout.id, index),
                 ItemNavigationAction.Collection(CollectionType.LOADOUT, loadout.page, loadout.id, index),
                 ItemDataOrigin.LOCAL_OBSERVATION,
+                loadout.updatedAtEpochMillis,
             )
         }
     }
@@ -34,6 +35,7 @@ object SkyHudRepositoryItemSources {
                 ItemLocation.Collection("Wardrobe", set.page, set.id, index),
                 ItemNavigationAction.Collection(CollectionType.WARDROBE, set.page, set.id, index),
                 ItemDataOrigin.LOCAL_OBSERVATION,
+                set.updatedAtEpochMillis,
             )
         }
     }
@@ -47,6 +49,7 @@ object SkyHudRepositoryItemSources {
                 ItemLocation.Collection("Equipment", set.page, set.id, index),
                 ItemNavigationAction.Collection(CollectionType.EQUIPMENT, set.page, set.id, index),
                 ItemDataOrigin.LOCAL_OBSERVATION,
+                set.updatedAtEpochMillis,
             )
         }
     }

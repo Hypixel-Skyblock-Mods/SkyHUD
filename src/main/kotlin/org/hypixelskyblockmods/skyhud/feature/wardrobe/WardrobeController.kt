@@ -77,6 +77,7 @@ object WardrobeController {
     }
 
     fun onClientTick(client: Minecraft) {
+        WardrobeRepository.sets.onClientTick()
         val current = ScreenCompat.currentScreen() ?: return
         if (originalMenu != null) {
             val target = WardrobeDetector.detect(current)
@@ -115,6 +116,7 @@ object WardrobeController {
     }
 
     private fun onOverlayClosed() {
+        WardrobeRepository.sets.flush()
         transition.clear(activeScreen)
         activeScreen = null
         currentTarget = null

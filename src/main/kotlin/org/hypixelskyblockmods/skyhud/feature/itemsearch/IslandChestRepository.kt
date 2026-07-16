@@ -52,6 +52,8 @@ object IslandChestRepository {
     private var tick = 0L
     private var pendingOpen: PendingOpen? = null
     private var activeOpen: ActiveOpen? = null
+    private var transientUnknownKey: ChestKey? = null
+    private var transientUnknownUntilTick = 0L
     private var activeHighlight: PendingHighlight? = null
     private var waitingForIslandHighlight: PendingHighlight? = null
 
@@ -62,6 +64,10 @@ object IslandChestRepository {
     fun onClientTick() {
         tick++
         if (pendingOpen?.expiresAtTick?.let { tick > it } == true) pendingOpen = null
+        if (tick > transientUnknownUntilTick) {
+            transientUnknownKey?.let { if (activeIdentity == null && activeOpen == null) chests.remove(it.identity) }
+            transientUnknownKey = null
+        }
         val now = System.currentTimeMillis()
         val currentProfile = SkyblockApiStorageAdapter.currentProfile()?.let { ProfileKey(it.accountUuid, it.profileName) }
         if (activeHighlight?.profile?.let { it != currentProfile } == true) activeHighlight = null
@@ -106,7 +112,10 @@ object IslandChestRepository {
     }
 
     fun onContainerClosed() {
-        if (activeIdentity == null) activeOpen?.let { chests.remove(it.key.identity) }
+        if (activeIdentity == null) {
+            transientUnknownKey = activeOpen?.key
+            transientUnknownUntilTick = tick + OPEN_BIND_TICKS
+        }
         activeOpen = null
         pendingOpen = null
         saveNow()
@@ -152,6 +161,7 @@ object IslandChestRepository {
         chests.clear()
         activeOpen = null
         pendingOpen = null
+        transientUnknownKey = null
         lastSavedJson = null
         saveAfterEpochMillis = null
         SkyBlockProfileStore.clear("island-chests", profile)
@@ -167,6 +177,7 @@ object IslandChestRepository {
         chests.clear()
         pendingOpen = null
         activeOpen = null
+        transientUnknownKey = null
         activeHighlight = null
         waitingForIslandHighlight = null
     }
@@ -179,11 +190,13 @@ object IslandChestRepository {
         ensureLoaded()
         if (!SkyblockApiItemSearchAdapter.isOnSkyBlock()) return emptyList()
         val visible = if (activeIdentity == null) {
-            activeOpen?.let { active -> chests[active.key.identity]?.let(::listOf) }.orEmpty()
+            val key = activeOpen?.key ?: transientUnknownKey
+            key?.let { chests[it.identity]?.let(::listOf) }.orEmpty()
         } else {
             chests.values.toList()
         }
         val activeKey = activeOpen?.key?.identity
+        val liveKey = activeKey ?: transientUnknownKey?.identity
         return visible.flatMap { chest ->
             chest.items.mapNotNull { item ->
                 SkyblockApiItemSearchAdapter.searchable(
@@ -192,7 +205,7 @@ object IslandChestRepository {
                     ItemSourceId.ISLAND_CHESTS,
                     ItemLocation.IslandChest(chest.key.positions, item.slot),
                     ItemNavigationAction.IslandChest(chest.key.positions),
-                    if (chest.key.identity == activeKey) ItemDataOrigin.LIVE_MENU else ItemDataOrigin.LOCAL_OBSERVATION,
+                    if (chest.key.identity == liveKey) ItemDataOrigin.LIVE_MENU else ItemDataOrigin.LOCAL_OBSERVATION,
                     chest.updatedAtEpochMillis,
                 )
             }

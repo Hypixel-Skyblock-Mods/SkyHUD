@@ -19,7 +19,11 @@ object ItemSearchNavigator {
             SkyHudConfigManager.config.huds.itemSearch.warpToIsland,
         )
         if (route == ItemSearchRoute.INFORMATIONAL) {
-            status("${item.location.label} is informational; there is no stable direct route.")
+            if (item.action is ItemNavigationAction.IslandChest) {
+                status("Enable Warp to Island in Item Search settings to warp before highlighting this chest.")
+            } else {
+                status("${item.location.label} is informational; there is no stable direct route.")
+            }
             return
         }
         if (route == ItemSearchRoute.WRONG_REALM) {

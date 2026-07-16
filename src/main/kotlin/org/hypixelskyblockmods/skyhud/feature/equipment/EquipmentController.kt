@@ -77,6 +77,7 @@ object EquipmentController {
     }
 
     fun onClientTick(client: Minecraft) {
+        EquipmentRepository.sets.onClientTick()
         val current = ScreenCompat.currentScreen() ?: return
         if (originalMenu != null) {
             val target = EquipmentDetector.detect(current)
@@ -115,6 +116,7 @@ object EquipmentController {
     }
 
     private fun onOverlayClosed() {
+        EquipmentRepository.sets.flush()
         transition.clear(activeScreen)
         activeScreen = null
         currentTarget = null

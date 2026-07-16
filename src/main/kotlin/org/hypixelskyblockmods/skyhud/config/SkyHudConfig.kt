@@ -214,13 +214,16 @@ class ItemSearchConfig {
 }
 
 class ItemSearchSourceConfig {
-    @field:Expose @field:ConfigOption(name = "Inventory", desc = "Inventory, armor, and equipped equipment.") @field:ConfigEditorBoolean @JvmField var inventory = true
-    @field:Expose @field:ConfigOption(name = "Storage", desc = "Ender Chest, backpacks, and Rift Storage.") @field:ConfigEditorBoolean @JvmField var storage = true
+    @field:Expose @field:ConfigOption(name = "Inventory", desc = "Normal inventory and armor observations.") @field:ConfigEditorBoolean @JvmField var inventory = true
+    @field:Expose @field:ConfigOption(name = "Equipped Equipment", desc = "Normal-realm equipped equipment from SkyblockAPI.") @field:ConfigEditorBoolean @JvmField var equippedEquipment = true
+    @field:Expose @field:ConfigOption(name = "Storage", desc = "Ender Chest and backpack pages.") @field:ConfigEditorBoolean @JvmField var storage = true
+    @field:Expose @field:ConfigOption(name = "Rift", desc = "Rift inventory, armor, equipment, and Storage.") @field:ConfigEditorBoolean @JvmField var rift = true
     @field:Expose @field:ConfigOption(name = "Loadouts", desc = "SkyHUD Loadout observations.") @field:ConfigEditorBoolean @JvmField var loadouts = true
     @field:Expose @field:ConfigOption(name = "Wardrobe", desc = "Armor Wardrobe observations.") @field:ConfigEditorBoolean @JvmField var wardrobe = true
     @field:Expose @field:ConfigOption(name = "Equipment Wardrobe", desc = "Equipment Wardrobe observations.") @field:ConfigEditorBoolean @JvmField var equipmentWardrobe = true
     @field:Expose @field:ConfigOption(name = "Accessory Bag", desc = "Cached Accessory Bag contents.") @field:ConfigEditorBoolean @JvmField var accessoryBag = true
-    @field:Expose @field:ConfigOption(name = "Sacks", desc = "Sack contents and Sack of Sacks.") @field:ConfigEditorBoolean @JvmField var sacks = true
+    @field:Expose @field:ConfigOption(name = "Sacks", desc = "Cached aggregate Sack contents.") @field:ConfigEditorBoolean @JvmField var sacks = true
+    @field:Expose @field:ConfigOption(name = "Sack of Sacks", desc = "Legitimately observed Sack of Sacks items.") @field:ConfigEditorBoolean @JvmField var sackOfSacks = true
     @field:Expose @field:ConfigOption(name = "Personal Vault", desc = "Cached Personal Vault contents.") @field:ConfigEditorBoolean @JvmField var vault = true
     @field:Expose @field:ConfigOption(name = "Forge", desc = "Cached Forge slots.") @field:ConfigEditorBoolean @JvmField var forge = true
     @field:Expose @field:ConfigOption(name = "Museum", desc = "Cached Museum contents.") @field:ConfigEditorBoolean @JvmField var museum = true

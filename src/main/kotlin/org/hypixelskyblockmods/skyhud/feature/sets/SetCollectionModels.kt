@@ -27,6 +27,7 @@ data class CachedSetSlot(
     val selected: Boolean,
     val locked: Boolean,
     val selectable: Boolean,
+    val updatedAtEpochMillis: Long?,
 )
 
 data class SetCard(
@@ -44,18 +45,22 @@ data class CachedSetPage(
 class SetCollectionRepository(
     private val cacheName: String,
 ) {
+    private data class SavedIndexedItem(var index: Int = 0, var stack: String = "")
+
     private data class SavedSet(
         var page: Int = 1,
         var index: Int = 0,
         var id: Int = 1,
-        var items: MutableList<String> = mutableListOf(),
+        var items: MutableList<SavedIndexedItem> = mutableListOf(),
         var selector: String = "",
         var selected: Boolean = false,
         var locked: Boolean = false,
         var selectable: Boolean = false,
+        var updatedAtEpochMillis: Long? = null,
     )
 
     private data class SavedSetCache(
+        var schemaVersion: Int = 1,
         var sets: MutableList<SavedSet> = mutableListOf(),
     )
 
@@ -68,10 +73,12 @@ class SetCollectionRepository(
     private var loadedProfile: ProfileKey? = null
     private var activeIdentity: SkyBlockProfileIdentity? = null
     private var lastSavedJson: String? = null
+    private var saveAfterEpochMillis: Long? = null
 
     fun remember(page: Int, menu: ChestMenu) {
         ensureLoaded()
         if ((36..44).any { menu.getSlot(it).item.isEmpty }) return
+        val observedAt = System.currentTimeMillis()
         val slots = (0 until 9).map { column ->
             val items = (0 until 4).map { row ->
                 menu.getSlot(row * 9 + column).item
@@ -93,12 +100,16 @@ class SetCollectionRepository(
                 selected = selected,
                 locked = locked,
                 selectable = selected || (!locked && items.any { !it.isEmpty }),
+                updatedAtEpochMillis = observedAt,
             )
         }
         val cachedPage = CachedSetPage(page, slots)
-        if (!pageMatches(pages[page], cachedPage)) {
+        val previousPage = pages[page]
+        val refreshTimestamp = previousPage?.slots?.mapNotNull(CachedSetSlot::updatedAtEpochMillis)?.minOrNull()
+            ?.let { observedAt - it >= 60_000L } != false
+        if (!pageMatches(previousPage, cachedPage) || refreshTimestamp) {
             pages[page] = cachedPage
-            save()
+            scheduleSave()
         }
     }
 
@@ -111,6 +122,7 @@ class SetCollectionRepository(
                 },
             )
         }
+        scheduleSave()
     }
 
     fun page(page: Int): CachedSetPage? {
@@ -136,11 +148,19 @@ class SetCollectionRepository(
     }
 
     fun resetSession() {
+        saveNow()
         pages.clear()
         loadedProfile = null
         activeIdentity = null
         lastSavedJson = null
+        saveAfterEpochMillis = null
     }
+
+    fun onClientTick() {
+        saveAfterEpochMillis?.let { if (System.currentTimeMillis() >= it) saveNow() }
+    }
+
+    fun flush() = saveNow()
 
     fun clearCurrentProfile() {
         val profile = SkyblockApiStorageAdapter.currentProfile() ?: return
@@ -148,6 +168,7 @@ class SetCollectionRepository(
         loadedProfile = ProfileKey(profile.accountUuid, profile.profileName)
         activeIdentity = profile
         lastSavedJson = null
+        saveAfterEpochMillis = null
         SkyBlockProfileStore.clear(cacheName, profile)
     }
 
@@ -170,11 +191,12 @@ class SetCollectionRepository(
                             page = set.page,
                             index = set.index,
                             id = set.id,
-                            items = set.items.map(ItemStackSerialization::decode),
+                            items = decodeIndexed(set.items, 4),
                             selector = ItemStackSerialization.decode(set.selector),
                             selected = set.selected,
                             locked = set.locked,
                             selectable = set.selectable,
+                            updatedAtEpochMillis = set.updatedAtEpochMillis?.takeIf { it > 0 },
                         )
                     },
                 )
@@ -184,19 +206,25 @@ class SetCollectionRepository(
         }
     }
 
-    private fun save() {
+    private fun scheduleSave() {
+        if (activeIdentity != null) saveAfterEpochMillis = System.currentTimeMillis() + 500L
+    }
+
+    private fun saveNow() {
+        saveAfterEpochMillis = null
         val profile = activeIdentity ?: return
         val saved = SavedSetCache(
-            pages.values.flatMap(CachedSetPage::slots).map { set ->
+            sets = pages.values.flatMap(CachedSetPage::slots).map { set ->
                 SavedSet(
                     page = set.page,
                     index = set.index,
                     id = set.id,
-                    items = set.items.map(ItemStackSerialization::encode).toMutableList(),
+                    items = encodeIndexed(set.items),
                     selector = ItemStackSerialization.encode(set.selector),
                     selected = set.selected,
                     locked = set.locked,
                     selectable = set.selectable,
+                    updatedAtEpochMillis = set.updatedAtEpochMillis,
                 )
             }.toMutableList(),
         )
@@ -204,6 +232,18 @@ class SetCollectionRepository(
         if (json == lastSavedJson) return
         if (SkyBlockProfileStore.write(cacheName, profile, json)) lastSavedJson = json
     }
+
+    private fun encodeIndexed(stacks: List<ItemStack>): MutableList<SavedIndexedItem> = stacks.mapIndexedNotNull { index, stack ->
+        stack.takeUnless(ItemStack::isEmpty)
+            ?.let(ItemStackSerialization::encode)
+            ?.takeIf(String::isNotBlank)
+            ?.let { SavedIndexedItem(index, it) }
+    }.toMutableList()
+
+    private fun decodeIndexed(items: List<SavedIndexedItem>, size: Int): List<ItemStack> =
+        MutableList(size) { ItemStack.EMPTY }.also { result ->
+            items.forEach { item -> if (item.index in result.indices) result[item.index] = ItemStackSerialization.decode(item.stack) }
+        }
 
     private fun pageMatches(previous: CachedSetPage?, current: CachedSetPage): Boolean {
         if (previous == null || previous.slots.size != current.slots.size) return false

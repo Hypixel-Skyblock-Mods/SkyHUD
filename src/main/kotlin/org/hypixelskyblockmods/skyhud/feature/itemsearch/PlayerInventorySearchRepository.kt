@@ -25,7 +25,8 @@ object PlayerInventorySearchRepository {
     private var saveAfterEpochMillis: Long? = null
 
     fun initializeSource() {
-        ItemSourceRegistry.register(ItemSourceId.INVENTORY, ::snapshot)
+        ItemSourceRegistry.register(ItemSourceId.INVENTORY) { snapshot(InventoryRealm.NORMAL) }
+        ItemSourceRegistry.register(ItemSourceId.RIFT) { snapshot(InventoryRealm.RIFT) }
     }
 
     fun onInventoryChanged() {
@@ -60,20 +61,20 @@ object PlayerInventorySearchRepository {
         saveAfterEpochMillis = null
     }
 
-    private fun snapshot(): List<SearchableItem> {
+    private fun snapshot(requestedRealm: InventoryRealm): List<SearchableItem> {
         if (!SkyblockApiItemSearchAdapter.isOnSkyBlock()) return emptyList()
         ensureLoaded()
         rememberLive()
         val currentRealm = SkyblockApiItemSearchAdapter.currentRealm()
-        return snapshots.flatMap { (realm, snapshot) ->
+        return snapshots.filterKeys { it == requestedRealm }.flatMap { (realm, snapshot) ->
             snapshot.items.mapNotNull { item ->
-                val source = if (item.equipped) ItemSourceId.EQUIPPED else if (realm == InventoryRealm.RIFT) ItemSourceId.RIFT else ItemSourceId.INVENTORY
+                val source = if (realm == InventoryRealm.RIFT) ItemSourceId.RIFT else ItemSourceId.INVENTORY
                 SkyblockApiItemSearchAdapter.searchable(
                     item.stack,
                     item.stack.count.toLong(),
                     source,
                     ItemLocation.Inventory(realm, item.slot, item.equipped),
-                    if (realm == currentRealm && !item.equipped) ItemNavigationAction.Inventory(realm, item.slot) else if (item.equipped) ItemNavigationAction.Command("equipment") else ItemNavigationAction.None,
+                    if (realm == currentRealm) ItemNavigationAction.Inventory(realm, item.slot) else ItemNavigationAction.None,
                     if (realm == currentRealm) ItemDataOrigin.LIVE_PLAYER else ItemDataOrigin.LOCAL_OBSERVATION,
                     if (realm == currentRealm) System.currentTimeMillis() else snapshot.updatedAtEpochMillis,
                 )
@@ -111,7 +112,7 @@ object PlayerInventorySearchRepository {
             }
             listOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET).forEachIndexed { index, slot ->
                 val stack = player.getItemBySlot(slot)
-                if (!stack.isEmpty) add(ObservedItem(index, true, stack.copy()))
+                if (!stack.isEmpty) add(ObservedItem(39 - index, true, stack.copy()))
             }
         }
         val previous = snapshots[realm]

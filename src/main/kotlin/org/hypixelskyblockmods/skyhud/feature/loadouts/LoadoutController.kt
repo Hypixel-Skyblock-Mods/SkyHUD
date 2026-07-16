@@ -66,6 +66,7 @@ object LoadoutController {
     }
 
     fun onClientTick(client: Minecraft) {
+        LoadoutRepository.onClientTick()
         val current = ScreenCompat.currentScreen() ?: return
         if (originalMenu != null) {
             val target = LoadoutDetector.detect(current)
@@ -104,6 +105,7 @@ object LoadoutController {
     }
 
     private fun onOverlayClosed() {
+        LoadoutRepository.flush()
         transition.clear(activeScreen)
         activeScreen = null
         currentTarget = null

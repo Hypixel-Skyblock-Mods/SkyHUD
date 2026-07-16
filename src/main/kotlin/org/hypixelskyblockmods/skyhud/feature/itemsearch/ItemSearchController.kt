@@ -132,17 +132,19 @@ object ItemSearchController {
         val screen = activeScreen
         activeScreen = null
         if (screen != null && ScreenCompat.currentScreen() === screen) ScreenCompat.setScreen(null)
-        Minecraft.getInstance().player?.closeContainer()
     }
 
     private fun enabledSources(config: ItemSearchSourceConfig): Set<ItemSourceId> = buildSet {
-        if (config.inventory) addAll(listOf(ItemSourceId.INVENTORY, ItemSourceId.EQUIPPED, ItemSourceId.RIFT))
+        if (config.inventory) add(ItemSourceId.INVENTORY)
+        if (config.equippedEquipment) add(ItemSourceId.EQUIPPED)
         if (config.storage) add(ItemSourceId.STORAGE)
+        if (config.rift) add(ItemSourceId.RIFT)
         if (config.loadouts) add(ItemSourceId.LOADOUTS)
         if (config.wardrobe) add(ItemSourceId.WARDROBE)
         if (config.equipmentWardrobe) add(ItemSourceId.EQUIPMENT_WARDROBE)
         if (config.accessoryBag) add(ItemSourceId.ACCESSORY_BAG)
-        if (config.sacks) addAll(listOf(ItemSourceId.SACKS, ItemSourceId.SACK_OF_SACKS))
+        if (config.sacks) add(ItemSourceId.SACKS)
+        if (config.sackOfSacks) add(ItemSourceId.SACK_OF_SACKS)
         if (config.vault) add(ItemSourceId.VAULT)
         if (config.forge) add(ItemSourceId.FORGE)
         if (config.museum) add(ItemSourceId.MUSEUM)

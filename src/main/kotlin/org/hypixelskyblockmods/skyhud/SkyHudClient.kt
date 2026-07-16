@@ -15,11 +15,15 @@ import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.feature.enderchest.EnderChestController
 import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentController
 import org.hypixelskyblockmods.skyhud.feature.loadouts.LoadoutController
+import org.hypixelskyblockmods.skyhud.feature.loadouts.LoadoutRepository
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.PlayerInventorySearchRepository
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.IslandChestRepository
+import org.hypixelskyblockmods.skyhud.feature.itemsearch.SackOfSacksRepository
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.ItemSearchController
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.ItemSearchDataManager
 import org.hypixelskyblockmods.skyhud.feature.wardrobe.WardrobeController
+import org.hypixelskyblockmods.skyhud.feature.wardrobe.WardrobeRepository
+import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentRepository
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiIntegration
@@ -72,6 +76,7 @@ object SkyHudClient : ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(WardrobeController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register { PlayerInventorySearchRepository.onClientTick() }
         ClientTickEvents.END_CLIENT_TICK.register { IslandChestRepository.onClientTick() }
+        ClientTickEvents.END_CLIENT_TICK.register { SackOfSacksRepository.onClientTick() }
         ClientTickEvents.END_CLIENT_TICK.register(ItemSearchController::onClientTick)
         LevelRenderEvents.BEFORE_GIZMOS.register {
             val accent = SkyHudTheme.PRIMARY and 0x00FFFFFF
@@ -84,6 +89,10 @@ object SkyHudClient : ClientModInitializer {
             SkyHudConfigManager.save()
             PlayerInventorySearchRepository.flush()
             IslandChestRepository.flush()
+            SackOfSacksRepository.flush()
+            LoadoutRepository.flush()
+            WardrobeRepository.sets.flush()
+            EquipmentRepository.sets.flush()
             SkyHudBackdrop.close()
         }
         logger.info("SkyHUD initialized")
