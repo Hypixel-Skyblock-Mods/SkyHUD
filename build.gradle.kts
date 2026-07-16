@@ -29,12 +29,14 @@ val targetNames = targetProperties.required("targets")
     .split(',')
     .map(String::trim)
     .filter(String::isNotEmpty)
+val skyblockApiVersion = targetProperties.required("skyblock_api")
 val targets = targetNames.associateWith { name ->
     Target(
         minecraft = targetProperties.required("$name.minecraft"),
         fabricApi = targetProperties.required("$name.fabric_api"),
         moulConfig = targetProperties.required("$name.moul_config"),
         modMenu = targetProperties.required("$name.mod_menu"),
+        skyblockApiCapability = targetProperties.required("$name.skyblock_api_capability"),
     )
 }
 val modVersion = providers.gradleProperty("mod_version").get()
@@ -47,6 +49,7 @@ allprojects {
         mavenCentral()
         maven("https://maven.fabricmc.net/")
         maven("https://maven.notenoughupdates.org/releases/")
+        maven("https://maven.teamresourceful.com/repository/maven-public/")
         maven("https://api.modrinth.com/maven")
     }
 }
@@ -87,6 +90,18 @@ subprojects {
         add("implementation", "net.fabricmc:fabric-language-kotlin:1.13.12+kotlin.2.4.0")
         add("implementation", "org.notenoughupdates.moulconfig:${target.moulConfig}:4.7.2")
         add("include", "org.notenoughupdates.moulconfig:${target.moulConfig}:4.7.2")
+        add("implementation", "tech.thatgravyboat:skyblock-api:$skyblockApiVersion") {
+            isTransitive = false
+            capabilities {
+                requireCapability("tech.thatgravyboat:skyblock-api-${target.skyblockApiCapability}")
+            }
+        }
+        add("include", "tech.thatgravyboat:skyblock-api:$skyblockApiVersion") {
+            isTransitive = false
+            capabilities {
+                requireCapability("tech.thatgravyboat:skyblock-api-${target.skyblockApiCapability}")
+            }
+        }
         add("compileOnly", "maven.modrinth:modmenu:${target.modMenu}")
     }
 
@@ -195,4 +210,5 @@ data class Target(
     val fabricApi: String,
     val moulConfig: String,
     val modMenu: String,
+    val skyblockApiCapability: String,
 )
