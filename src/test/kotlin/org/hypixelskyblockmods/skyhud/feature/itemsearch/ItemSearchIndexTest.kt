@@ -106,6 +106,23 @@ class ItemSearchIndexTest {
         assertFalse(ItemSearchIndex.buildForTests(listOf(live)).all().single().isStale(now, 86_400_000L))
     }
 
+    @Test
+    fun `tooltip locations retain names amounts and overflow count`() {
+        val fingerprint = fingerprint("coal")
+        val items = (1..10).map { index ->
+            item(
+                ItemStack.EMPTY,
+                index.toLong(),
+                fingerprint,
+                ItemLocation.Generic("Forge slot $index", "forge:$index"),
+            )
+        }
+
+        val lines = ItemSearchIndex.buildForTests(items).all().single().locationTooltipLines(maxLocations = 3)
+
+        assertEquals(listOf("Forge slot 1", "Forge slot 2 × 2", "Forge slot 3 × 3", "…and 7 more locations"), lines)
+    }
+
     private fun item(
         stack: ItemStack,
         amount: Long,

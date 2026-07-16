@@ -13,6 +13,7 @@ enum class ItemSourceCategory {
     ISLAND_CHESTS,
     MUSEUM,
     RIFT,
+    FORGE,
     OTHER,
 }
 
@@ -28,7 +29,7 @@ enum class ItemSourceId(val displayName: String, val category: ItemSourceCategor
     SACKS("Sacks", ItemSourceCategory.SACKS),
     SACK_OF_SACKS("Sack of Sacks", ItemSourceCategory.SACKS),
     VAULT("Personal Vault", ItemSourceCategory.OTHER),
-    FORGE("Forge", ItemSourceCategory.OTHER),
+    FORGE("Forge", ItemSourceCategory.FORGE),
     MUSEUM("Museum", ItemSourceCategory.MUSEUM),
     ISLAND_CHESTS("Island Chests", ItemSourceCategory.ISLAND_CHESTS),
     INSTALLED_PARTS("Installed Parts", ItemSourceCategory.OTHER),
@@ -52,7 +53,7 @@ sealed interface ItemLocation {
     val identity: String
 
     data class Inventory(val realm: InventoryRealm, val slot: Int, val equipped: Boolean = false) : ItemLocation {
-        override val label = "${realm.displayName()} ${if (equipped) "equipment" else "inventory"} slot ${slot + 1}"
+        override val label = inventoryLocationLabel(realm, slot, equipped)
         override val identity = "inventory:${realm.name}:$equipped:$slot"
     }
 
@@ -62,7 +63,7 @@ sealed interface ItemLocation {
     }
 
     data class Collection(val collection: String, val page: Int, val setId: Int, val itemIndex: Int) : ItemLocation {
-        override val label = "$collection #$setId, item ${itemIndex + 1}"
+        override val label = "$collection #$setId — ${collectionSlotLabel(collection, itemIndex)}"
         override val identity = "collection:$collection:$page:$setId:$itemIndex"
     }
 
@@ -76,15 +77,53 @@ sealed interface ItemLocation {
     }
 
     data class IslandChest(val positions: List<BlockPos>, val slot: Int) : ItemLocation {
-        private val first = positions.first()
-        override val label = "Island chest at ${first.x}, ${first.y}, ${first.z}, slot ${slot + 1}"
+        private val coordinates = positions.joinToString(" & ") { "${it.x}, ${it.y}, ${it.z}" }
+        override val label = "Island ${if (positions.size > 1) "double " else ""}chest at $coordinates, slot ${slot + 1}"
         override val identity = "island:${positions.joinToString(";") { "${it.x},${it.y},${it.z}" }}:$slot"
     }
 
     data class Generic(override val label: String, override val identity: String = "generic:$label") : ItemLocation
 }
 
-private fun InventoryRealm.displayName(): String = if (this == InventoryRealm.RIFT) "Rift" else "Normal"
+private fun inventoryLocationLabel(realm: InventoryRealm, slot: Int, equipped: Boolean): String {
+    val prefix = if (realm == InventoryRealm.RIFT) "Rift " else ""
+    if (equipped) {
+        val armorSlot = when (slot) {
+            39 -> "Helmet"
+            38 -> "Chestplate"
+            37 -> "Leggings"
+            36 -> "Boots"
+            else -> "armor slot ${slot + 1}"
+        }
+        return "${prefix}equipped $armorSlot"
+    }
+    return if (slot in 0..8) {
+        "${prefix}hotbar slot ${slot + 1}"
+    } else {
+        "${prefix}inventory slot ${slot + 1}"
+    }
+}
+
+private fun collectionSlotLabel(collection: String, itemIndex: Int): String = when (collection.lowercase()) {
+    "loadout" -> listOf(
+        "Helmet",
+        "Chestplate",
+        "Leggings",
+        "Boots",
+        "Necklace",
+        "Cloak",
+        "Belt",
+        "Gloves/Bracelet",
+        "Pet",
+        "Heart of the Mountain",
+        "Heart of the Forest",
+        "Power Stone",
+        "Tuning Template",
+    ).getOrNull(itemIndex)
+    "wardrobe" -> listOf("Helmet", "Chestplate", "Leggings", "Boots").getOrNull(itemIndex)
+    "equipment" -> listOf("Necklace", "Cloak", "Belt", "Gloves/Bracelet").getOrNull(itemIndex)
+    else -> null
+} ?: "item ${itemIndex + 1}"
 
 sealed interface ItemNavigationAction {
     data object None : ItemNavigationAction
@@ -140,6 +179,19 @@ data class ItemSearchEntry(
     fun isStale(now: Long, staleAfterMillis: Long): Boolean = locations.any {
         val updated = it.updatedAtEpochMillis ?: return@any false
         it.origin != ItemDataOrigin.LIVE_MENU && it.origin != ItemDataOrigin.LIVE_PLAYER && now - updated > staleAfterMillis
+    }
+
+    internal fun locationTooltipLines(maxLocations: Int = 8): List<String> {
+        val limit = maxLocations.coerceAtLeast(1)
+        val lines = locations.take(limit).map { item ->
+            buildString {
+                append(item.location.label)
+                if (item.amount > 1) append(" × ").append(item.amount)
+            }
+        }.toMutableList()
+        val remaining = locations.size - lines.size
+        if (remaining > 0) lines += "…and $remaining more location${if (remaining == 1) "" else "s"}"
+        return lines
     }
 }
 

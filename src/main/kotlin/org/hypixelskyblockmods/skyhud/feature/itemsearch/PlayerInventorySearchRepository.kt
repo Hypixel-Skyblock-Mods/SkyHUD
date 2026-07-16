@@ -25,8 +25,9 @@ object PlayerInventorySearchRepository {
     private var saveAfterEpochMillis: Long? = null
 
     fun initializeSource() {
-        ItemSourceRegistry.register(ItemSourceId.INVENTORY) { snapshot(InventoryRealm.NORMAL) }
-        ItemSourceRegistry.register(ItemSourceId.RIFT) { snapshot(InventoryRealm.RIFT) }
+        ItemSourceRegistry.register(ItemSourceId.INVENTORY) { snapshot(InventoryRealm.NORMAL, equippedOnly = false) }
+        ItemSourceRegistry.register(ItemSourceId.EQUIPPED) { snapshot(InventoryRealm.NORMAL, equippedOnly = true) }
+        ItemSourceRegistry.register(ItemSourceId.RIFT) { snapshot(InventoryRealm.RIFT, equippedOnly = null) }
     }
 
     fun onInventoryChanged() {
@@ -61,14 +62,18 @@ object PlayerInventorySearchRepository {
         saveAfterEpochMillis = null
     }
 
-    private fun snapshot(requestedRealm: InventoryRealm): List<SearchableItem> {
+    private fun snapshot(requestedRealm: InventoryRealm, equippedOnly: Boolean?): List<SearchableItem> {
         if (!SkyblockApiItemSearchAdapter.isOnSkyBlock()) return emptyList()
         ensureLoaded()
         rememberLive()
         val currentRealm = SkyblockApiItemSearchAdapter.currentRealm()
         return snapshots.filterKeys { it == requestedRealm }.flatMap { (realm, snapshot) ->
-            snapshot.items.mapNotNull { item ->
-                val source = if (realm == InventoryRealm.RIFT) ItemSourceId.RIFT else ItemSourceId.INVENTORY
+            snapshot.items.filter { equippedOnly == null || it.equipped == equippedOnly }.mapNotNull { item ->
+                val source = when {
+                    realm == InventoryRealm.RIFT -> ItemSourceId.RIFT
+                    item.equipped -> ItemSourceId.EQUIPPED
+                    else -> ItemSourceId.INVENTORY
+                }
                 SkyblockApiItemSearchAdapter.searchable(
                     item.stack,
                     item.stack.count.toLong(),

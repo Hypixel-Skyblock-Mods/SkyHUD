@@ -1,10 +1,13 @@
 package org.hypixelskyblockmods.skyhud.feature.itemsearch
 
+import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudControls
@@ -27,7 +30,20 @@ class ItemSearchScreen(
         ItemSourceCategory.ISLAND_CHESTS,
         ItemSourceCategory.MUSEUM,
         ItemSourceCategory.RIFT,
+        ItemSourceCategory.FORGE,
         ItemSourceCategory.OTHER,
+    )
+    private val categoryIcons = mapOf(
+        ItemSourceCategory.ALL to ItemStack(Items.COMPASS),
+        ItemSourceCategory.STORAGE to ItemStack(Items.ENDER_CHEST),
+        ItemSourceCategory.INVENTORY to ItemStack(Items.CHEST),
+        ItemSourceCategory.WARDROBE_EQUIPMENT to ItemStack(Items.IRON_CHESTPLATE),
+        ItemSourceCategory.SACKS to ItemStack(Items.BUNDLE),
+        ItemSourceCategory.ISLAND_CHESTS to ItemStack(Items.TRAPPED_CHEST),
+        ItemSourceCategory.MUSEUM to ItemStack(Items.PAINTING),
+        ItemSourceCategory.RIFT to ItemStack(Items.ENDER_EYE),
+        ItemSourceCategory.FORGE to ItemStack(Items.BLAST_FURNACE),
+        ItemSourceCategory.OTHER to ItemStack(Items.HOPPER),
     )
     private var query = initialQuery
     private var category = initialCategory
@@ -140,17 +156,20 @@ class ItemSearchScreen(
         val startY = panelY() + headerHeight + 7
         val collapsed = collapsedSidebar()
         val width = if (collapsed) narrowSidebarWidth - 8 else sidebarWidth - 9
+        val availableHeight = panelY() + panelHeight() - 7 - startY
+        val pitch = (availableHeight / categories.size).coerceIn(19, 25)
+        val buttonHeight = (pitch - 4).coerceIn(17, 21)
         val bounds = mutableListOf<CategoryBounds>()
         categories.forEachIndexed { index, value ->
-            val y = startY + index * 25
-            val hovered = mouseX in x until (x + width) && mouseY in y until (y + 21)
+            val y = startY + index * pitch
+            val hovered = mouseX in x until (x + width) && mouseY in y until (y + buttonHeight)
             val selected = value == category
             SkyHudTheme.outlinedRoundedRect(
                 graphics,
                 x,
                 y,
                 width,
-                21,
+                buttonHeight,
                 when {
                     selected -> SkyHudTheme.SURFACE_RAISED
                     hovered -> SkyHudTheme.CONTROL_HOVER
@@ -158,10 +177,22 @@ class ItemSearchScreen(
                 },
                 if (selected) SkyHudTheme.PRIMARY else SkyHudTheme.BORDER,
             )
-            val label = if (collapsed) value.icon() else value.label()
-            SkyHudControls.centeredText(graphics, font, label, x, y, width, 21, if (selected) SkyHudTheme.TEXT else SkyHudTheme.TEXT_MUTED)
+            val icon = categoryIcons.getValue(value)
+            val iconX = if (collapsed) x + (width - 16) / 2 else x + 4
+            val iconY = y + (buttonHeight - 16) / 2
+            graphics.item(icon, iconX, iconY)
+            if (!collapsed) {
+                graphics.text(
+                    font,
+                    value.label(),
+                    x + 24,
+                    y + (buttonHeight - font.lineHeight) / 2,
+                    if (selected) SkyHudTheme.TEXT else SkyHudTheme.TEXT_MUTED,
+                    false,
+                )
+            }
             if (collapsed && hovered) graphics.setTooltipForNextFrame(Component.literal(value.label()), mouseX, mouseY)
-            bounds += CategoryBounds(value, x, y, width, 21)
+            bounds += CategoryBounds(value, x, y, width, buttonHeight)
         }
         categoryBounds = bounds
     }
@@ -207,7 +238,15 @@ class ItemSearchScreen(
                 graphics.text(font, "!", slotX + 15, slotY + 2, 0xFFFFB84D.toInt(), false)
             }
             if (hovered) {
-                graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
+                val tooltip = getTooltipFromItem(minecraft, stack).toMutableList()
+                tooltip += Component.empty()
+                tooltip += Component.literal(if (entry.locations.size == 1) "Location" else "Locations")
+                    .withStyle(ChatFormatting.GRAY)
+                entry.locationTooltipLines().forEach { location ->
+                    tooltip += Component.literal("• ").withStyle(ChatFormatting.DARK_GRAY)
+                        .append(Component.literal(location).withStyle(ChatFormatting.AQUA))
+                }
+                graphics.setTooltipForNextFrame(font, tooltip, stack.tooltipImage, mouseX, mouseY)
             }
             bounds += ItemBounds(entry, slotX, slotY)
         }
@@ -377,24 +416,13 @@ private fun ItemSourceCategory.label(): String = when (this) {
     ItemSourceCategory.ALL -> "All"
     ItemSourceCategory.STORAGE -> "Storage"
     ItemSourceCategory.INVENTORY -> "Inventory"
-    ItemSourceCategory.WARDROBE_EQUIPMENT -> "Wardrobe & Equip."
+    ItemSourceCategory.WARDROBE_EQUIPMENT -> "Wardrobe/Equip"
     ItemSourceCategory.SACKS -> "Sacks"
     ItemSourceCategory.ISLAND_CHESTS -> "Island Chests"
     ItemSourceCategory.MUSEUM -> "Museum"
     ItemSourceCategory.RIFT -> "Rift"
+    ItemSourceCategory.FORGE -> "Forge"
     ItemSourceCategory.OTHER -> "Other"
-}
-
-private fun ItemSourceCategory.icon(): String = when (this) {
-    ItemSourceCategory.ALL -> "A"
-    ItemSourceCategory.STORAGE -> "S"
-    ItemSourceCategory.INVENTORY -> "I"
-    ItemSourceCategory.WARDROBE_EQUIPMENT -> "W"
-    ItemSourceCategory.SACKS -> "§"
-    ItemSourceCategory.ISLAND_CHESTS -> "C"
-    ItemSourceCategory.MUSEUM -> "M"
-    ItemSourceCategory.RIFT -> "R"
-    ItemSourceCategory.OTHER -> "…"
 }
 
 private fun ItemSearchSort.label(): String = when (this) {

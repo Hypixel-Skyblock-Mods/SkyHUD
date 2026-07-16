@@ -93,6 +93,20 @@ class ItemSearchInfrastructureTest {
         assertEquals(ItemSearchRoute.ISLAND_WARP, itemSearchRoute(island, InventoryRealm.NORMAL, false, true))
     }
 
+    @Test
+    fun `locations describe worn armor collections and chest coordinates`() {
+        assertEquals("equipped Helmet", ItemLocation.Inventory(InventoryRealm.NORMAL, 39, equipped = true).label)
+        assertEquals("Rift equipped Boots", ItemLocation.Inventory(InventoryRealm.RIFT, 36, equipped = true).label)
+        assertEquals("hotbar slot 3", ItemLocation.Inventory(InventoryRealm.NORMAL, 2).label)
+        assertEquals("Loadout #4 — Chestplate", ItemLocation.Collection("Loadout", 1, 4, 1).label)
+        assertEquals("Wardrobe #7 — Boots", ItemLocation.Collection("Wardrobe", 1, 7, 3).label)
+        assertEquals(
+            "Island double chest at 10, 64, 20 & 11, 64, 20, slot 6",
+            ItemLocation.IslandChest(listOf(BlockPos(10, 64, 20), BlockPos(11, 64, 20)), 5).label,
+        )
+        assertEquals(ItemSourceCategory.FORGE, ItemSourceId.FORGE.category)
+    }
+
     private fun searchable(action: ItemNavigationAction, source: ItemSourceId): SearchableItem {
         val stack = ItemStack.EMPTY
         return SearchableItem(
