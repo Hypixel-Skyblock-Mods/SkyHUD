@@ -1,6 +1,11 @@
 package org.hypixelskyblockmods.skyhud.integration.skyblockapi
 
+import net.minecraft.client.Minecraft
+import net.minecraft.core.BlockPos
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.block.ChestBlock
+import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.properties.ChestType
 import org.hypixelskyblockmods.skyhud.feature.enderchest.EnderChestRepository
 import org.hypixelskyblockmods.skyhud.feature.enderchest.StoragePageKey
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.InventoryRealm
@@ -53,6 +58,22 @@ object SkyblockApiItemSearchAdapter {
         LocationAPI.island == SkyBlockIsland.PRIVATE_ISLAND && !LocationAPI.isGuest
 
     fun hasSkyBlockId(stack: ItemStack): Boolean = stack.getData(DataTypes.ID) != null
+
+    fun chestPositions(pos: BlockPos): List<BlockPos>? {
+        val level = Minecraft.getInstance().level ?: return null
+        val state = level.getBlockState(pos)
+        if (state.block !is ChestBlock) return null
+        if (state.getValue(ChestBlock.TYPE) == ChestType.SINGLE) return listOf(pos.immutable())
+        val connected = pos.relative(ChestBlock.getConnectedDirection(state))
+        val connectedState = level.getBlockState(connected)
+        return if (connectedState.block == state.block && connectedState.block is ChestBlock) {
+            listOf(pos.immutable(), connected.immutable())
+        } else {
+            null
+        }
+    }
+
+    fun isChest(state: BlockState): Boolean = state.block is ChestBlock
 
     fun searchable(
         stack: ItemStack,

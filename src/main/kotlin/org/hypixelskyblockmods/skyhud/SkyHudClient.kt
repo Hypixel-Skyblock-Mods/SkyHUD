@@ -3,17 +3,22 @@ package org.hypixelskyblockmods.skyhud
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.minecraft.client.Minecraft
+import net.minecraft.gizmos.GizmoStyle
+import net.minecraft.gizmos.Gizmos
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.feature.enderchest.EnderChestController
 import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentController
 import org.hypixelskyblockmods.skyhud.feature.loadouts.LoadoutController
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.PlayerInventorySearchRepository
+import org.hypixelskyblockmods.skyhud.feature.itemsearch.IslandChestRepository
 import org.hypixelskyblockmods.skyhud.feature.wardrobe.WardrobeController
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
+import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiIntegration
 import org.slf4j.LoggerFactory
 
@@ -42,9 +47,18 @@ object SkyHudClient : ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(LoadoutController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register(WardrobeController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register { PlayerInventorySearchRepository.onClientTick() }
+        ClientTickEvents.END_CLIENT_TICK.register { IslandChestRepository.onClientTick() }
+        LevelRenderEvents.BEFORE_GIZMOS.register {
+            val accent = SkyHudTheme.PRIMARY and 0x00FFFFFF
+            val style = GizmoStyle.strokeAndFill(0xFF000000.toInt() or accent, 2.0f, 0x30000000 or accent)
+            IslandChestRepository.highlightedPositions().forEach { position ->
+                Gizmos.cuboid(position, style).setAlwaysOnTop()
+            }
+        }
         ClientLifecycleEvents.CLIENT_STOPPING.register {
             SkyHudConfigManager.save()
             PlayerInventorySearchRepository.flush()
+            IslandChestRepository.flush()
             SkyHudBackdrop.close()
         }
         logger.info("SkyHUD initialized")
