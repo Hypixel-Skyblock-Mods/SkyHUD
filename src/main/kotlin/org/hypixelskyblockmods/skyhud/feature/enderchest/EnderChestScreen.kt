@@ -45,6 +45,9 @@ class EnderChestScreen(
     private var pageBounds = emptyList<PageBounds>()
     private var inventorySlotBounds = emptyList<InventorySlotBounds>()
     private var draggingScrollbar = false
+    private var highlightedPage: StoragePageKey? = null
+    private var highlightedItemIndex: Int? = null
+    private var highlightUntilEpochMillis = 0L
 
     private val panelMaxWidth = 574
     private val panelMaxHeight = 430
@@ -93,6 +96,13 @@ class EnderChestScreen(
         } else {
             EnderChestRepository.remember(key, chestMenu)
         }
+    }
+
+    fun highlightItem(page: StoragePageKey, itemIndex: Int) {
+        highlightedPage = page
+        highlightedItemIndex = itemIndex
+        highlightUntilEpochMillis = System.currentTimeMillis() + 10_000L
+        searchText = ""
     }
 
     override fun init() {
@@ -230,6 +240,21 @@ class EnderChestScreen(
         val contentHeight = rowHeights.sum() + (rowHeights.size - 1).coerceAtLeast(0) * pageGapVertical
         maxScroll = (contentHeight - viewportHeight).coerceAtLeast(0).toDouble()
         scroll = scroll.coerceIn(0.0, maxScroll)
+        if (System.currentTimeMillis() > highlightUntilEpochMillis) {
+            highlightedPage = null
+            highlightedItemIndex = null
+        } else {
+            val highlightedRow = pages.indexOf(highlightedPage).takeIf { it >= 0 }?.div(pageColumns)
+            if (highlightedRow != null) {
+                val rowTop = rowHeights.take(highlightedRow).sum() + highlightedRow * pageGapVertical
+                val rowBottom = rowTop + rowHeights[highlightedRow]
+                scroll = when {
+                    rowTop < scroll -> rowTop.toDouble()
+                    rowBottom > scroll + viewportHeight -> (rowBottom - viewportHeight).toDouble()
+                    else -> scroll
+                }.coerceIn(0.0, maxScroll)
+            }
+        }
 
         val contentWidth = pageColumns * pageWidth + (pageColumns - 1) * pageGapHorizontal
         val startX = panelX + (panelWidth - contentWidth) / 2
@@ -384,6 +409,9 @@ class EnderChestScreen(
                     drawOutline(graphics, slotX, slotY, slotSize - 1, slotSize - 1, SkyHudTheme.PRIMARY_HOVER, 1)
                 }
                 if (slotHovered) graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
+            }
+            if (key == highlightedPage && index == highlightedItemIndex) {
+                drawOutline(graphics, slotX, slotY, slotSize - 1, slotSize - 1, SkyHudTheme.PRIMARY_HOVER, 2)
             }
         }
 

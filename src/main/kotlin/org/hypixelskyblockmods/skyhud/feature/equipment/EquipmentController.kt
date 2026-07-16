@@ -12,10 +12,12 @@ import org.hypixelskyblockmods.skyhud.platform.ScreenCompat
 
 object EquipmentController {
     private data class PendingAction(val page: Int, val index: Int?)
+    private data class PendingSearchHighlight(val page: Int, val setId: Int)
 
     private var activeScreen: SetCollectionScreen? = null
     private var currentTarget: EquipmentTarget? = null
     private var pendingAction: PendingAction? = null
+    private var pendingSearchHighlight: PendingSearchHighlight? = null
     private var showOriginalNext = false
     private var originalMenu: ChestMenu? = null
     private var deferredScreen: Screen? = null
@@ -67,7 +69,10 @@ object EquipmentController {
         if (ScreenCompat.currentScreen() === screen) {
             ScreenCompat.setScreen(overlay)
         }
-        client.execute { advancePendingAction() }
+        client.execute {
+            advancePendingSearchHighlight()
+            advancePendingAction()
+        }
         return true
     }
 
@@ -100,6 +105,7 @@ object EquipmentController {
         activeScreen = null
         currentTarget = null
         pendingAction = null
+        pendingSearchHighlight = null
         showOriginalNext = false
         originalMenu = null
         deferredScreen = null
@@ -113,12 +119,35 @@ object EquipmentController {
         activeScreen = null
         currentTarget = null
         pendingAction = null
+        pendingSearchHighlight = null
         deferredScreen = null
     }
 
     private fun requestAction(page: Int, index: Int?) {
         pendingAction = PendingAction(page, index)
         if (!advancePendingAction()) transition.scheduleRefresh()
+    }
+
+    fun navigateToSearchResult(page: Int, setId: Int) {
+        pendingSearchHighlight = PendingSearchHighlight(page, setId)
+        Minecraft.getInstance().player?.connection?.sendCommand("eq")
+    }
+
+    private fun advancePendingSearchHighlight(): Boolean {
+        val pending = pendingSearchHighlight ?: return false
+        val target = currentTarget ?: return false
+        val client = Minecraft.getInstance()
+        val player = client.player ?: return false
+        if (player.containerMenu !== target.menu) return false
+        if (target.page == pending.page) {
+            activeScreen?.highlightCard(pending.setId)
+            pendingSearchHighlight = null
+            return true
+        }
+        val navigationSlot = if (pending.page > target.page) 53 else 45
+        transition.arm(activeScreen)
+        client.gameMode?.handleContainerInput(target.menu.containerId, navigationSlot, 0, ContainerInput.PICKUP, player)
+        return true
     }
 
     private fun advancePendingAction(): Boolean {

@@ -44,6 +44,8 @@ class LoadoutScreen(
     private var maxScroll = 0.0
     private var loadoutBounds = emptyList<LoadoutBounds>()
     private var draggingScrollbar = false
+    private var highlightedLoadoutId: Int? = null
+    private var highlightUntilEpochMillis = 0L
     private val mannequins = mutableMapOf<Int, LoadoutMannequin>()
 
     private val panelMaxWidth = 620
@@ -68,6 +70,13 @@ class LoadoutScreen(
         val chestMenu = menu as? ChestMenu ?: return
         if (chestMenu !== backingMenu) return
         LoadoutRepository.remember(currentPage, chestMenu)
+    }
+
+    fun highlightCard(loadoutId: Int) {
+        highlightedLoadoutId = loadoutId
+        highlightUntilEpochMillis = System.currentTimeMillis() + 10_000L
+        searchText = ""
+        scroll = 0.0
     }
 
     override fun init() {
@@ -227,6 +236,7 @@ class LoadoutScreen(
         val empty = loadout?.empty == true
         val locked = loadout?.locked == true
         val selected = loadout?.selected == true
+        if (System.currentTimeMillis() > highlightUntilEpochMillis) highlightedLoadoutId = null
         val bodyHovered = mouseInContentViewport(mouseX, mouseY) &&
             mouseX in x until (x + width) && mouseY in cardY until (cardY + cardHeight)
         val fill = when {
@@ -236,6 +246,7 @@ class LoadoutScreen(
         }
         SkyHudTheme.roundedRect(graphics, x, cardY, width, cardHeight, fill)
         if (selected) drawOutline(graphics, x - 1, cardY - 1, width + 2, cardHeight + 2, SkyHudTheme.PRIMARY_HOVER)
+        if (card.id == highlightedLoadoutId) drawOutline(graphics, x - 2, cardY - 2, width + 4, cardHeight + 4, SkyHudTheme.PRIMARY_HOVER)
 
         val name = loadout?.name ?: "LOADOUT ${card.id}"
         val nameHovered = loadout != null && !locked && mouseInContentViewport(mouseX, mouseY) &&

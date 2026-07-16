@@ -111,6 +111,13 @@ object ItemSearchController {
         generation++
     }
 
+    fun closeForNavigation() {
+        generation++
+        val screen = activeScreen
+        activeScreen = null
+        if (screen != null && ScreenCompat.currentScreen() === screen) ScreenCompat.setScreen(null)
+    }
+
     fun cancelIndex() {
         generation++
         viewState = ViewState()

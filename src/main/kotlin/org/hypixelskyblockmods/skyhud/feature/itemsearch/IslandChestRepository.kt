@@ -27,7 +27,11 @@ object IslandChestRepository {
     )
     private data class PendingOpen(val key: ChestKey, val expiresAtTick: Long)
     private data class ActiveOpen(val key: ChestKey, val containerId: Int)
-    private data class PendingHighlight(val positions: List<BlockPos>, val expiresAtEpochMillis: Long)
+    private data class PendingHighlight(
+        val profile: ProfileKey?,
+        val positions: List<BlockPos>,
+        val expiresAtEpochMillis: Long,
+    )
 
     private data class SavedPosition(var x: Int = 0, var y: Int = 0, var z: Int = 0)
     private data class SavedItem(var slot: Int = 0, var stack: String = "")
@@ -59,12 +63,15 @@ object IslandChestRepository {
         tick++
         if (pendingOpen?.expiresAtTick?.let { tick > it } == true) pendingOpen = null
         val now = System.currentTimeMillis()
+        val currentProfile = SkyblockApiStorageAdapter.currentProfile()?.let { ProfileKey(it.accountUuid, it.profileName) }
+        if (activeHighlight?.profile?.let { it != currentProfile } == true) activeHighlight = null
+        if (waitingForIslandHighlight?.profile != currentProfile) waitingForIslandHighlight = null
         if (activeHighlight?.expiresAtEpochMillis?.let { now > it } == true) activeHighlight = null
         waitingForIslandHighlight?.let { waiting ->
             if (now > waiting.expiresAtEpochMillis) {
                 waitingForIslandHighlight = null
             } else if (SkyblockApiItemSearchAdapter.isOwnPrivateIsland()) {
-                activeHighlight = PendingHighlight(waiting.positions, now + HIGHLIGHT_MILLIS)
+                activeHighlight = PendingHighlight(waiting.profile, waiting.positions, now + HIGHLIGHT_MILLIS)
                 waitingForIslandHighlight = null
             }
         }
@@ -117,12 +124,15 @@ object IslandChestRepository {
 
     fun highlight(positions: List<BlockPos>, afterIslandWarp: Boolean = false) {
         val canonical = chestKey(positions)?.positions ?: return
+        val identity = SkyblockApiStorageAdapter.currentProfile()
+        val profile = identity?.let { ProfileKey(it.accountUuid, it.profileName) }
         val now = System.currentTimeMillis()
         if (afterIslandWarp) {
-            waitingForIslandHighlight = PendingHighlight(canonical, now + WARP_HIGHLIGHT_TIMEOUT_MILLIS)
+            if (profile == null) return
+            waitingForIslandHighlight = PendingHighlight(profile, canonical, now + WARP_HIGHLIGHT_TIMEOUT_MILLIS)
             activeHighlight = null
         } else {
-            activeHighlight = PendingHighlight(canonical, now + HIGHLIGHT_MILLIS)
+            activeHighlight = PendingHighlight(profile, canonical, now + HIGHLIGHT_MILLIS)
             waitingForIslandHighlight = null
         }
     }

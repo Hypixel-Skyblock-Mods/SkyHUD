@@ -160,7 +160,7 @@ object SkyblockApiItemSearchAdapter {
                 stack.count.toLong(),
                 ItemSourceId.RIFT,
                 ItemLocation.Container("Rift ${slot.name.lowercase()}", slot = index),
-                ItemNavigationAction.Command("equipment"),
+                ItemNavigationAction.Command("stats"),
                 ItemDataOrigin.SKYBLOCK_API_PROFILE,
             )
         }
