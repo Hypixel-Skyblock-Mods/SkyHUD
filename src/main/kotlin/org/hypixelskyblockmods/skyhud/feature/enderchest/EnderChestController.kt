@@ -28,6 +28,7 @@ object EnderChestController {
             originalMenu = target.menu
             if (target is EnderChestTarget.Overview) EnderChestRepository.rememberOverview(target.menu)
             activeScreen = null
+            EnderChestRepository.clearLiveBacking()
             return false
         }
         var commandAfterReplacement: String? = null
@@ -83,12 +84,14 @@ object EnderChestController {
             overlay = activeScreen ?: return
             if (ScreenCompat.currentScreen() !== overlay) ScreenCompat.setScreen(overlay)
         }
+        EnderChestRepository.refreshApiSnapshot()
         overlay.refreshBackingMenu(client.player?.containerMenu)
     }
 
     private fun onOverlayClosed() {
         OverlayTransitionGuard.clear(activeScreen)
         activeScreen = null
+        EnderChestRepository.clearLiveBacking()
     }
 
     private fun beginMenuTransition() {

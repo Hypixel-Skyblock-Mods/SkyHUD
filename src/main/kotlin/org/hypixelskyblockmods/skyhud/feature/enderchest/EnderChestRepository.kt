@@ -1,12 +1,11 @@
 package org.hypixelskyblockmods.skyhud.feature.enderchest
 
-import com.google.gson.GsonBuilder
 import java.util.UUID
 import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.item.ItemStack
-import org.hypixelskyblockmods.skyhud.util.ProfileItemCache
+import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyBlockProfileIdentity
+import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiStorageAdapter
 import org.hypixelskyblockmods.skyhud.util.VanillaItemIds
-import org.slf4j.LoggerFactory
 
 enum class StoragePageType {
     ENDER_CHEST,
@@ -54,31 +53,23 @@ data class CachedEnderChestPage(
     val key: StoragePageKey,
     val rows: Int,
     val items: List<ItemStack>,
+    val updatedAtEpochMillis: Long? = null,
 ) {
     val page: Int
         get() = key.number
 }
 
 object EnderChestRepository {
-    private data class SavedPage(
-        var type: String = StoragePageType.ENDER_CHEST.name,
-        var number: Int = 1,
-        var rows: Int = 0,
-        var items: MutableList<String> = mutableListOf(),
+    private data class StorageProfileKey(
+        val accountUuid: UUID,
+        val profileName: String,
     )
 
-    private data class SavedStorage(
-        var overviewDiscovered: Boolean = false,
-        var available: MutableList<String> = mutableListOf(),
-        var pages: MutableList<SavedPage> = mutableListOf(),
-    )
-
-    private val logger = LoggerFactory.getLogger("SkyHUD Storage Cache")
-    private val gson = GsonBuilder().setPrettyPrinting().create()
-    private val pages = sortedMapOf<StoragePageKey, CachedEnderChestPage>()
     private val availablePages = sortedSetOf<StoragePageKey>()
-    private var loadedProfile: UUID? = null
-    private var lastSavedJson: String? = null
+    private var apiPages = emptyMap<StoragePageKey, CachedEnderChestPage>()
+    private var loadedProfile: StorageProfileKey? = null
+    private var livePageKey: StoragePageKey? = null
+    private var liveMenu: ChestMenu? = null
     var hasDiscoveredOverview: Boolean = false
         private set
 
@@ -87,124 +78,112 @@ object EnderChestRepository {
     }
 
     fun remember(key: StoragePageKey, menu: ChestMenu) {
-        ensureLoaded()
+        ensureProfileState()
+        availablePages.add(key)
+        livePageKey = key
+        liveMenu = menu
+        refreshApiSnapshot()
+    }
+
+    fun rememberEnderChest(page: Int, totalPages: Int, menu: ChestMenu) {
+        ensureProfileState()
+        (1..totalPages).mapTo(availablePages, StoragePageKey::enderChest)
+        remember(StoragePageKey.enderChest(page), menu)
+    }
+
+    fun rememberOverview(menu: ChestMenu) {
+        ensureProfileState()
+        val discovered = sortedSetOf<StoragePageKey>()
+        (1..9).map(StoragePageKey::enderChest).filterTo(discovered) { isAvailableOverviewSlot(it, menu) }
+        (1..18).map(StoragePageKey::backpack).filterTo(discovered) { isAvailableOverviewSlot(it, menu) }
+        availablePages.clear()
+        availablePages.addAll(discovered)
+        hasDiscoveredOverview = true
+        livePageKey = null
+        liveMenu = null
+        refreshApiSnapshot()
+    }
+
+    fun refreshApiSnapshot() {
+        val profile = ensureProfileState() ?: run {
+            apiPages = emptyMap()
+            return
+        }
+        val pages = SkyblockApiStorageAdapter.allPages().associate { page ->
+            val rows = ((page.items.size + 8) / 9).coerceIn(1, 5)
+            page.key to CachedEnderChestPage(
+                key = page.key,
+                rows = rows,
+                items = page.items,
+                updatedAtEpochMillis = page.updatedAtEpochMillis,
+            )
+        }
+        if (profile == currentProfileKey()) apiPages = pages
+    }
+
+    fun page(page: Int): CachedEnderChestPage? = page(StoragePageKey.enderChest(page))
+
+    fun page(key: StoragePageKey): CachedEnderChestPage? {
+        ensureProfileState()
+        val menu = liveMenu
+        if (key == livePageKey && menu != null) return livePage(key, menu)
+        return apiPages[key]
+    }
+
+    fun allPages(): List<StoragePageKey> {
+        ensureProfileState()
+        val visible = if (hasDiscoveredOverview) {
+            availablePages.toMutableSet()
+        } else {
+            (availablePages + apiPages.keys).toMutableSet()
+        }
+        livePageKey?.let(visible::add)
+        return StoragePagePreferences.order(visible)
+    }
+
+    fun clearLiveBacking() {
+        livePageKey = null
+        liveMenu = null
+    }
+
+    fun resetSession() {
+        availablePages.clear()
+        apiPages = emptyMap()
+        hasDiscoveredOverview = false
+        clearLiveBacking()
+        loadedProfile = currentProfileKey()
+    }
+
+    private fun ensureProfileState(): StorageProfileKey? {
+        val profile = currentProfileKey()
+        if (loadedProfile != profile) {
+            availablePages.clear()
+            apiPages = emptyMap()
+            hasDiscoveredOverview = false
+            clearLiveBacking()
+            loadedProfile = profile
+        }
+        return profile
+    }
+
+    private fun currentProfileKey(): StorageProfileKey? =
+        SkyblockApiStorageAdapter.currentProfile()?.toStorageKey()
+
+    private fun SkyBlockProfileIdentity.toStorageKey() = StorageProfileKey(accountUuid, profileName)
+
+    private fun livePage(key: StoragePageKey, menu: ChestMenu): CachedEnderChestPage {
         val containerSize = menu.rowCount * 9
         val itemRows = menu.rowCount - 1
         val copiedItems = menu.items
             .take(containerSize)
             .drop(9)
             .map(ItemStack::copy)
-        var changed = availablePages.add(key)
-        val page = CachedEnderChestPage(key, itemRows, copiedItems)
-        val previous = pages[key]
-        if (previous == null || previous.rows != page.rows || !ProfileItemCache.stacksMatch(previous.items, page.items)) {
-            pages[key] = page
-            changed = true
-        }
-        if (changed) save()
+        return CachedEnderChestPage(key, itemRows, copiedItems)
     }
 
-    fun rememberEnderChest(page: Int, totalPages: Int, menu: ChestMenu) {
-        ensureLoaded()
-        val changed = (1..totalPages).fold(false) { anyChanged, number ->
-            availablePages.add(StoragePageKey.enderChest(number)) || anyChanged
-        }
-        if (changed) save()
-        remember(StoragePageKey.enderChest(page), menu)
-    }
-
-    fun rememberOverview(menu: ChestMenu) {
-        ensureLoaded()
-        var changed = !hasDiscoveredOverview
-        hasDiscoveredOverview = true
-        (1..9).forEach { changed = rememberOverviewSlot(StoragePageKey.enderChest(it), menu) || changed }
-        (1..18).forEach { changed = rememberOverviewSlot(StoragePageKey.backpack(it), menu) || changed }
-        if (changed) save()
-    }
-
-    fun page(page: Int): CachedEnderChestPage? {
-        ensureLoaded()
-        return pages[StoragePageKey.enderChest(page)]
-    }
-
-    fun page(key: StoragePageKey): CachedEnderChestPage? {
-        ensureLoaded()
-        return pages[key]
-    }
-
-    fun allPages(): List<StoragePageKey> {
-        ensureLoaded()
-        return StoragePagePreferences.order(availablePages + pages.keys)
-    }
-
-    fun clear() {
-        pages.clear()
-        availablePages.clear()
-        hasDiscoveredOverview = false
-        save()
-    }
-
-    private fun rememberOverviewSlot(key: StoragePageKey, menu: ChestMenu): Boolean {
+    private fun isAvailableOverviewSlot(key: StoragePageKey, menu: ChestMenu): Boolean {
         val stack = menu.getSlot(key.overviewSlot).item
-        if (stack.isEmpty) return false
-        if (stack.isEmptyStorageSlot()) {
-            val availableChanged = availablePages.remove(key)
-            val pageChanged = pages.remove(key) != null
-            return availableChanged || pageChanged
-        } else {
-            return availablePages.add(key)
-        }
-    }
-
-    private fun ensureLoaded() {
-        val profile = ProfileItemCache.currentProfile()
-        if (loadedProfile == profile) return
-        loadedProfile = profile
-        pages.clear()
-        availablePages.clear()
-        hasDiscoveredOverview = false
-        lastSavedJson = ProfileItemCache.read("storage", profile)
-        val json = lastSavedJson ?: return
-        runCatching {
-            val saved = gson.fromJson(json, SavedStorage::class.java)
-            hasDiscoveredOverview = saved.overviewDiscovered
-            saved.available.mapNotNull(::decodeKey).forEach(availablePages::add)
-            saved.pages.forEach { savedPage ->
-                val type = runCatching { StoragePageType.valueOf(savedPage.type) }.getOrNull() ?: return@forEach
-                val key = StoragePageKey(type, savedPage.number)
-                pages[key] = CachedEnderChestPage(key, savedPage.rows, savedPage.items.map(ProfileItemCache::decode))
-            }
-        }.onFailure {
-            logger.warn("Could not load storage cache for $profile", it)
-        }
-    }
-
-    private fun save() {
-        val profile = loadedProfile ?: ProfileItemCache.currentProfile()
-        val saved = SavedStorage(
-            overviewDiscovered = hasDiscoveredOverview,
-            available = availablePages.map(::encodeKey).toMutableList(),
-            pages = pages.values.map { page ->
-                SavedPage(
-                    type = page.key.type.name,
-                    number = page.key.number,
-                    rows = page.rows,
-                    items = page.items.map(ProfileItemCache::encode).toMutableList(),
-                )
-            }.toMutableList(),
-        )
-        val json = gson.toJson(saved)
-        if (json == lastSavedJson) return
-        if (ProfileItemCache.write("storage", profile, json)) lastSavedJson = json
-    }
-
-    private fun encodeKey(key: StoragePageKey): String = "${key.type.name}:${key.number}"
-
-    private fun decodeKey(encoded: String): StoragePageKey? {
-        val parts = encoded.split(':', limit = 2)
-        val type = parts.getOrNull(0)?.let { runCatching { StoragePageType.valueOf(it) }.getOrNull() } ?: return null
-        val number = parts.getOrNull(1)?.toIntOrNull() ?: return null
-        return StoragePageKey(type, number)
+        return !stack.isEmpty && !stack.isEmptyStorageSlot()
     }
 
     private fun ItemStack.isEmptyStorageSlot(): Boolean =
