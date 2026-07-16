@@ -11,6 +11,7 @@ import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.feature.enderchest.EnderChestController
 import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentController
 import org.hypixelskyblockmods.skyhud.feature.loadouts.LoadoutController
+import org.hypixelskyblockmods.skyhud.feature.itemsearch.PlayerInventorySearchRepository
 import org.hypixelskyblockmods.skyhud.feature.wardrobe.WardrobeController
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiIntegration
@@ -40,8 +41,10 @@ object SkyHudClient : ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(EquipmentController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register(LoadoutController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register(WardrobeController::onClientTick)
+        ClientTickEvents.END_CLIENT_TICK.register { PlayerInventorySearchRepository.onClientTick() }
         ClientLifecycleEvents.CLIENT_STOPPING.register {
             SkyHudConfigManager.save()
+            PlayerInventorySearchRepository.flush()
             SkyHudBackdrop.close()
         }
         logger.info("SkyHUD initialized")

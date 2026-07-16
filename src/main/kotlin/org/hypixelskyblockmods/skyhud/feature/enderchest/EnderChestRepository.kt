@@ -145,6 +145,10 @@ object EnderChestRepository {
         return StoragePagePreferences.order(visible)
     }
 
+    fun searchSnapshot(): List<CachedEnderChestPage> = allPages().mapNotNull(::page).map { page ->
+        page.copy(items = page.items.map(ItemStack::copy))
+    }
+
     fun clearLiveBacking() {
         livePageKey = null
         liveMenu = null

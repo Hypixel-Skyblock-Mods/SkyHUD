@@ -10,26 +10,48 @@ fun interface ItemSearchSource {
     fun snapshot(): List<SearchableItem>
 }
 
+fun interface DerivedItemSearchSource {
+    fun derive(items: List<SearchableItem>): List<SearchableItem>
+}
+
 object ItemSourceRegistry {
-    private val sources = linkedMapOf<ItemSourceId, ItemSearchSource>()
+    private val sources = linkedMapOf<ItemSourceId, MutableList<ItemSearchSource>>()
+    private val derivedSources = linkedMapOf<ItemSourceId, MutableList<DerivedItemSearchSource>>()
 
     fun register(id: ItemSourceId, source: ItemSearchSource) {
-        sources[id] = source
+        sources.getOrPut(id) { mutableListOf() }.add(source)
+    }
+
+    fun registerDerived(id: ItemSourceId, source: DerivedItemSearchSource) {
+        derivedSources.getOrPut(id) { mutableListOf() }.add(source)
     }
 
     fun snapshot(enabled: Set<ItemSourceId> = ItemSourceId.entries.toSet()): SourceSnapshot {
         val items = mutableListOf<SearchableItem>()
         val failures = linkedMapOf<ItemSourceId, Throwable>()
-        sources.forEach { (id, source) ->
+        sources.forEach { (id, registered) ->
             if (id !in enabled) return@forEach
-            runCatching { source.snapshot().filterNot { it.stack.isEmpty || it.amount <= 0 }.map(SearchableItem::defensiveCopy) }
-                .onSuccess(items::addAll)
-                .onFailure { failures[id] = it }
+            registered.forEach { source ->
+                runCatching { source.snapshot().filterNot { it.stack.isEmpty || it.amount <= 0 }.map(SearchableItem::defensiveCopy) }
+                    .onSuccess(items::addAll)
+                    .onFailure { failures[id] = it }
+            }
+        }
+        derivedSources.forEach { (id, registered) ->
+            if (id !in enabled) return@forEach
+            registered.forEach { source ->
+                runCatching { source.derive(items.map(SearchableItem::defensiveCopy)).map(SearchableItem::defensiveCopy) }
+                    .onSuccess(items::addAll)
+                    .onFailure { failures[id] = it }
+            }
         }
         return SourceSnapshot(items, failures)
     }
 
-    fun clear() = sources.clear()
+    fun clear() {
+        sources.clear()
+        derivedSources.clear()
+    }
 }
 
 data class SourceSnapshot(val items: List<SearchableItem>, val failures: Map<ItemSourceId, Throwable>)
