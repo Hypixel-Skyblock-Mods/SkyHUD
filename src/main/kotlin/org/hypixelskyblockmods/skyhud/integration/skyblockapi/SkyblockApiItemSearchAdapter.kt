@@ -8,6 +8,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.properties.ChestType
 import org.hypixelskyblockmods.skyhud.feature.enderchest.EnderChestRepository
 import org.hypixelskyblockmods.skyhud.feature.enderchest.StoragePageKey
+import org.hypixelskyblockmods.skyhud.feature.enderchest.StoragePageOrigin
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.InventoryRealm
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.ItemDataOrigin
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.ItemFingerprintFactory
@@ -108,7 +109,7 @@ object SkyblockApiItemSearchAdapter {
         )
     }
 
-    private fun storageItems(): List<SearchableItem> = profileSnapshot {
+    private fun storageItems(): List<SearchableItem> =
         EnderChestRepository.searchSnapshot().flatMap { page ->
             page.items.mapIndexedNotNull { index, stack ->
                 searchable(
@@ -117,12 +118,15 @@ object SkyblockApiItemSearchAdapter {
                     ItemSourceId.STORAGE,
                     ItemLocation.Storage(page.key, index),
                     ItemNavigationAction.Storage(page.key, index),
-                    if (page.updatedAtEpochMillis == null) ItemDataOrigin.LIVE_MENU else ItemDataOrigin.SKYBLOCK_API_PROFILE,
+                    when (page.origin) {
+                        StoragePageOrigin.LIVE_MENU -> ItemDataOrigin.LIVE_MENU
+                        StoragePageOrigin.SKYHUD_PROFILE -> ItemDataOrigin.LOCAL_OBSERVATION
+                        StoragePageOrigin.SKYBLOCK_API -> ItemDataOrigin.SKYBLOCK_API_PROFILE
+                    },
                     page.updatedAtEpochMillis,
                 )
             }
         }
-    }
 
     private fun normalEquipment(): List<SearchableItem> = profileSnapshot {
         EquipmentAPI.normalEquipment.entries.mapIndexedNotNull { index, (slot, stack) ->

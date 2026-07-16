@@ -2,18 +2,24 @@ package org.hypixelskyblockmods.skyhud.feature.itemsearch
 
 import com.google.gson.GsonBuilder
 import java.util.UUID
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.core.BlockPos
+import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.item.ItemStack
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyBlockProfileIdentity
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiItemSearchAdapter
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiStorageAdapter
 import org.hypixelskyblockmods.skyhud.util.ItemStackSerialization
+import org.slf4j.LoggerFactory
 
 object IslandChestRepository {
     private const val OPEN_BIND_TICKS = 40L
     private const val SAVE_DEBOUNCE_MILLIS = 500L
     private const val HIGHLIGHT_MILLIS = 20_000L
     private const val WARP_HIGHLIGHT_TIMEOUT_MILLIS = 30_000L
+    private val logger = LoggerFactory.getLogger("SkyHUD Island Chests")
 
     private data class ProfileKey(val accountUuid: UUID, val profileName: String)
     private data class ChestKey(val positions: List<BlockPos>) {
@@ -63,6 +69,7 @@ object IslandChestRepository {
 
     fun onClientTick() {
         tick++
+        refreshActiveContainer()
         if (pendingOpen?.expiresAtTick?.let { tick > it } == true) pendingOpen = null
         if (tick > transientUnknownUntilTick) {
             transientUnknownKey?.let { if (activeIdentity == null && activeOpen == null) chests.remove(it.identity) }
@@ -102,6 +109,12 @@ object IslandChestRepository {
         pendingOpen = null
         activeOpen = ActiveOpen(pending.key, containerId)
         capture(pending.key, items)
+    }
+
+    fun onScreenOpened(screen: Screen) {
+        val container = screen as? AbstractContainerScreen<*> ?: return
+        val menu = container.menu as? ChestMenu ?: return
+        initializeContainer(menu.containerId, menu.items.take(menu.rowCount * 9).map(ItemStack::copy))
     }
 
     fun onContainerChanged(containerId: Int, items: List<ItemStack>) {
@@ -241,7 +254,18 @@ object IslandChestRepository {
         val previous = chests[key.identity]
         if (previous != null && observedMatches(previous.items, items)) return
         chests[key.identity] = ChestSnapshot(key, System.currentTimeMillis(), items)
+        if (previous == null) logger.info("Remembered island chest ${key.identity} with ${items.size} occupied slots")
         scheduleSave()
+    }
+
+    private fun refreshActiveContainer() {
+        val active = activeOpen ?: return
+        val menu = Minecraft.getInstance().player?.containerMenu as? ChestMenu
+        if (menu == null || menu.containerId != active.containerId) {
+            onContainerClosed()
+            return
+        }
+        onContainerChanged(active.containerId, menu.items.take(menu.rowCount * 9).map(ItemStack::copy))
     }
 
     private fun scheduleSave() {

@@ -84,6 +84,7 @@ object EnderChestController {
     }
 
     fun onClientTick(client: Minecraft) {
+        EnderChestRepository.onClientTick()
         val current = ScreenCompat.currentScreen() ?: return
         if (originalMenu != null) {
             val target = EnderChestDetector.detect(current)
@@ -159,6 +160,7 @@ object EnderChestController {
         !first.isEmpty && ItemStack.matches(first.copyWithCount(1), second.copyWithCount(1))
 
     private fun onOverlayClosed() {
+        EnderChestRepository.flush()
         OverlayTransitionGuard.clear(activeScreen)
         activeScreen = null
         EnderChestRepository.clearLiveBacking()

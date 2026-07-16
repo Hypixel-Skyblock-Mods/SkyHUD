@@ -7,6 +7,10 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.item.ItemStack
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfig
 import org.hypixelskyblockmods.skyhud.feature.enderchest.StoragePageType
+import org.hypixelskyblockmods.skyhud.feature.enderchest.CachedEnderChestPage
+import org.hypixelskyblockmods.skyhud.feature.enderchest.StoragePageKey
+import org.hypixelskyblockmods.skyhud.feature.enderchest.StoragePageOrigin
+import org.hypixelskyblockmods.skyhud.feature.enderchest.preferredStoragePage
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyBlockProfileIdentity
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.storagePageKeyFromApiIndex
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -30,6 +34,18 @@ class ItemSearchInfrastructureTest {
         assertNull(storagePageKeyFromApiIndex(StoragePageType.ENDER_CHEST, 9))
         assertEquals(18, storagePageKeyFromApiIndex(StoragePageType.BACKPACK, 17)?.number)
         assertNull(storagePageKeyFromApiIndex(StoragePageType.BACKPACK, 18))
+    }
+
+    @Test
+    fun `newest profile storage observation wins between caches`() {
+        val key = StoragePageKey.enderChest(1)
+        val observed = CachedEnderChestPage(key, 1, emptyList(), 200, StoragePageOrigin.SKYHUD_PROFILE)
+        val olderApi = CachedEnderChestPage(key, 1, emptyList(), 100, StoragePageOrigin.SKYBLOCK_API)
+        val newerApi = olderApi.copy(updatedAtEpochMillis = 300)
+
+        assertEquals(observed, preferredStoragePage(observed, olderApi))
+        assertEquals(newerApi, preferredStoragePage(observed, newerApi))
+        assertEquals(observed, preferredStoragePage(observed, null))
     }
 
     @Test

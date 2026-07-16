@@ -3,6 +3,7 @@ package org.hypixelskyblockmods.skyhud.feature.itemsearch
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentRepository
+import org.hypixelskyblockmods.skyhud.feature.enderchest.EnderChestRepository
 import org.hypixelskyblockmods.skyhud.feature.loadouts.LoadoutRepository
 import org.hypixelskyblockmods.skyhud.feature.wardrobe.WardrobeRepository
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiStorageAdapter
@@ -25,6 +26,7 @@ object ItemSearchDataManager {
             return
         }
         PlayerInventorySearchRepository.clearCurrentProfile()
+        EnderChestRepository.clearCurrentProfile()
         SackOfSacksRepository.clearCurrentProfile()
         IslandChestRepository.clearCurrentProfile()
         LoadoutRepository.clearCurrentProfile()

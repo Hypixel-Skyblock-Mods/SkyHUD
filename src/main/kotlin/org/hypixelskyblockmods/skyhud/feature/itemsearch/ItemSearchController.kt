@@ -61,6 +61,11 @@ object ItemSearchController {
         targetScreen.onIndexUpdated()
         val enabled = enabledSources(SkyHudConfigManager.config.itemSearch.sources)
         val sourceSnapshot = ItemSourceRegistry.snapshot(enabled)
+        val sourceCounts = sourceSnapshot.items.groupingBy(SearchableItem::source).eachCount()
+        logger.info(
+            "Building Item Search index with ${sourceSnapshot.items.size} locations: " +
+                sourceCounts.entries.joinToString { "${it.key.displayName}=${it.value}" },
+        )
         sourceSnapshot.failures.forEach { (source, failure) -> logger.warn("Item Search source ${source.displayName} is unavailable", failure) }
         CompletableFuture.supplyAsync { ItemSearchIndex.build(sourceSnapshot.items) }
             .whenComplete { index, failure ->

@@ -8,11 +8,14 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
+import net.fabricmc.fabric.api.event.player.UseBlockCallback
 import net.minecraft.client.Minecraft
 import net.minecraft.gizmos.GizmoStyle
 import net.minecraft.gizmos.Gizmos
+import net.minecraft.world.InteractionResult
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.feature.enderchest.EnderChestController
+import org.hypixelskyblockmods.skyhud.feature.enderchest.EnderChestRepository
 import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentController
 import org.hypixelskyblockmods.skyhud.feature.loadouts.LoadoutController
 import org.hypixelskyblockmods.skyhud.feature.loadouts.LoadoutRepository
@@ -28,6 +31,7 @@ import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentRepository
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiIntegration
+import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiItemSearchAdapter
 import org.slf4j.LoggerFactory
 
 object SkyHudClient : ClientModInitializer {
@@ -67,11 +71,19 @@ object SkyHudClient : ClientModInitializer {
             )
         }
         ScreenEvents.AFTER_INIT.register(ScreenEvents.AfterInit { client, screen, _, _ ->
+            IslandChestRepository.onScreenOpened(screen)
             EnderChestController.onScreenOpened(client, screen)
             EquipmentController.onScreenOpened(client, screen)
             LoadoutController.onScreenOpened(client, screen)
             WardrobeController.onScreenOpened(client, screen)
         })
+        UseBlockCallback.EVENT.register { player, level, _, hit ->
+            if (level.isClientSide && player === Minecraft.getInstance().player) {
+                SkyblockApiItemSearchAdapter.chestPositions(hit.blockPos)
+                    ?.let(IslandChestRepository::observeChestRightClick)
+            }
+            InteractionResult.PASS
+        }
         ClientTickEvents.END_CLIENT_TICK.register(EnderChestController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register(EquipmentController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register(LoadoutController::onClientTick)
@@ -89,6 +101,7 @@ object SkyHudClient : ClientModInitializer {
         }
         ClientLifecycleEvents.CLIENT_STOPPING.register {
             SkyHudConfigManager.save()
+            EnderChestRepository.flush()
             PlayerInventorySearchRepository.flush()
             IslandChestRepository.flush()
             SackOfSacksRepository.flush()
