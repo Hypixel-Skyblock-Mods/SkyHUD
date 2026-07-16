@@ -5,32 +5,6 @@ inventory menus with clean, modern interfaces.
 
 ## Features
 
-### Inventory Search
-
-![SkyHUD Inventory Search interface](https://cdn.modrinth.com/data/YfhLlJko/images/8d13308d510c92869fc78cf377f7835c79b48d78.png)
-
-- Press `I` while on SkyBlock, or run `/skyhud search [query]`, to open a
-  standalone SkyHUD-native finder without a player-inventory panel. The bind
-  appears as **Open Item Search** under Minecraft Controls > SkyHUD.
-- Searches the active SkyBlock profile across live and cached inventory,
-  Storage, Rift data, Loadouts, Wardrobe and Equipment, accessories, sacks,
-  Personal Vault, Forge, Museum, installed tool parts, and legitimately opened
-  private-island chests.
-- Aggregates exact item variants while preserving every known location, long
-  sack amounts, cached value estimates, source age, and rarity. Search can
-  optionally include lore, SkyBlock IDs, and location names.
-- Opens safe destination menus and highlights validated Storage pages, set
-  cards, inventory slots, or island chest blocks. Item Search never retrieves,
-  moves, clicks, or opens an item automatically.
-- Island chest tracking starts only after the player right-clicks a normal or
-  trapped chest on their own island. SkyHUD never scans chunks or reads
-  unopened block entities. Cached double chests are removed when either half
-  is observed breaking.
-- Search observations live under
-  `config/skyhud-item-search/<account>/<profile>/`. They are isolated by exact
-  SkyBlock profile name and can be cleared from the Item Search settings
-  without deleting SkyblockAPI data or legacy SkyHUD cache files.
-
 ### Ender Chest
 
 - Shows Ender Chest pages and discovered Storage backpacks in one searchable,
@@ -69,7 +43,7 @@ inventory menus with clean, modern interfaces.
   equipped loadout.
 - Grays out empty loadouts without removing their edit pen, and lets the
   loadout title open the server edit/rename flow.
-- Supports native item tooltips, loadout and item search, locked slots, validated
+- Supports native item tooltips, loadout-name and item-name search, locked slots, validated
   page navigation, and a pen button that opens Hypixel's loadout editor.
 
 ### Equipment Sets
@@ -100,13 +74,10 @@ to install SkyblockAPI or Hypixel Mod API separately.
 
 ## Settings
 
-Run `/skyhud` or use Mod Menu's Config button. Item Search, Ender Chest,
-Loadouts, Wardrobe, and Equipment Sets can be enabled independently, and
-settings are stored in `config/skyhud.json`. Item Search has its own top-level
-settings section with the synchronized keybind, match fields, stale warnings,
-optional island warping, individual source toggles, and profile-scoped clear
-actions. The Dashboard opens by default and shows the installed SkyHUD version
-plus whether a newer stable GitHub release is available.
+Run `/skyhud` or use Mod Menu's Config button. Ender Chest, Loadouts, Wardrobe,
+and Equipment Sets can be enabled independently, and settings are stored in
+`config/skyhud.json`. The Dashboard opens by default and shows the installed
+SkyHUD version plus whether a newer stable GitHub release is available.
 
 ## Building
 
@@ -123,10 +94,9 @@ versions/mc26_1_2/build/libs/SkyHUD-1.0.0+mc26.1.2.jar
 versions/mc26_2/build/libs/SkyHUD-1.0.0+mc26.2.jar
 ```
 
-SkyHUD is behaviorally informed by established SkyBlock storage mods and by
-[SkyOcean's item finder](https://github.com/meowdding/SkyOcean), but its UI,
-assets, and implementation are independent. It does not depend on SkyOcean or
-Firmament.
+SkyHUD is behaviorally informed by established SkyBlock storage mods, but its
+UI, assets, and implementation are independent. It does not depend on SkyOcean
+or Firmament.
 
 ## Embedded libraries
 

@@ -4,7 +4,7 @@ import com.google.gson.GsonBuilder
 import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.item.ItemStack
-import org.hypixelskyblockmods.skyhud.feature.itemsearch.SkyBlockProfileStore
+import org.hypixelskyblockmods.skyhud.profile.SkyHudProfileStore
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyBlockProfileIdentity
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiStorageAdapter
 import org.hypixelskyblockmods.skyhud.util.ItemText
@@ -341,7 +341,7 @@ object LoadoutRepository {
         activeIdentity = profile
         lastSavedJson = null
         saveAfterEpochMillis = null
-        SkyBlockProfileStore.clear("loadouts", profile)
+        SkyHudProfileStore.clear("loadouts", profile)
     }
 
     private fun ensureLoaded() {
@@ -351,7 +351,7 @@ object LoadoutRepository {
         loadedProfile = profile
         activeIdentity = identity
         pages.clear()
-        lastSavedJson = identity?.let { SkyBlockProfileStore.read("loadouts", it) }
+        lastSavedJson = identity?.let { SkyHudProfileStore.read("loadouts", it) }
         val json = lastSavedJson ?: return
         runCatching {
             val saved = gson.fromJson(json, SavedLoadoutCache::class.java)
@@ -422,7 +422,7 @@ object LoadoutRepository {
         )
         val json = gson.toJson(saved)
         if (json == lastSavedJson) return
-        if (SkyBlockProfileStore.write("loadouts", profile, json)) lastSavedJson = json
+        if (SkyHudProfileStore.write("loadouts", profile, json)) lastSavedJson = json
     }
 
     private fun encodeIndexed(stacks: List<ItemStack>): MutableList<SavedIndexedItem> = stacks.mapIndexedNotNull { index, stack ->

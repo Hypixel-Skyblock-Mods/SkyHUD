@@ -5,7 +5,7 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.item.ItemStack
-import org.hypixelskyblockmods.skyhud.feature.itemsearch.SkyBlockProfileStore
+import org.hypixelskyblockmods.skyhud.profile.SkyHudProfileStore
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyBlockProfileIdentity
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiStorageAdapter
 import org.hypixelskyblockmods.skyhud.util.ItemStackSerialization
@@ -169,7 +169,7 @@ class SetCollectionRepository(
         activeIdentity = profile
         lastSavedJson = null
         saveAfterEpochMillis = null
-        SkyBlockProfileStore.clear(cacheName, profile)
+        SkyHudProfileStore.clear(cacheName, profile)
     }
 
     private fun ensureLoaded() {
@@ -179,7 +179,7 @@ class SetCollectionRepository(
         loadedProfile = profile
         activeIdentity = identity
         pages.clear()
-        lastSavedJson = identity?.let { SkyBlockProfileStore.read(cacheName, it) }
+        lastSavedJson = identity?.let { SkyHudProfileStore.read(cacheName, it) }
         val json = lastSavedJson ?: return
         runCatching {
             val saved = gson.fromJson(json, SavedSetCache::class.java)
@@ -230,7 +230,7 @@ class SetCollectionRepository(
         )
         val json = gson.toJson(saved)
         if (json == lastSavedJson) return
-        if (SkyBlockProfileStore.write(cacheName, profile, json)) lastSavedJson = json
+        if (SkyHudProfileStore.write(cacheName, profile, json)) lastSavedJson = json
     }
 
     private fun encodeIndexed(stacks: List<ItemStack>): MutableList<SavedIndexedItem> = stacks.mapIndexedNotNull { index, stack ->

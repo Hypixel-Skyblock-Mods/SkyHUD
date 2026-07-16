@@ -3,7 +3,6 @@
   "package": "org.hypixelskyblockmods.skyhud.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
-    "ContainerScreenAccessor",
     "GuiBlurMixin",
     "ScreenRedirectMixin"
   ],

@@ -9,12 +9,9 @@ import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorBoolean
 import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorButton
 import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorColour
 import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorDropdown
-import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorKeybind
 import io.github.notenoughupdates.moulconfig.annotations.ConfigOption
 import io.github.notenoughupdates.moulconfig.common.IMinecraft
 import io.github.notenoughupdates.moulconfig.common.text.StructuredText
-import com.mojang.blaze3d.platform.InputConstants
-import org.hypixelskyblockmods.skyhud.feature.itemsearch.ItemSearchDataManager
 import org.hypixelskyblockmods.skyhud.update.SkyHudUpdateChecker
 
 class SkyHudConfig : Config() {
@@ -25,14 +22,6 @@ class SkyHudConfig : Config() {
     @field:Expose
     @JvmField
     var dashboard = DashboardConfig()
-
-    @field:Category(
-        name = "Item Search",
-        desc = "Configure SkyHUD's profile-aware item finder.",
-    )
-    @field:Expose
-    @JvmField
-    var itemSearch = ItemSearchConfig()
 
     @field:Category(
         name = "HUDS",
@@ -142,92 +131,6 @@ class HudConfig {
     @field:Expose
     @JvmField
     var equipment = FeatureToggle()
-}
-
-class ItemSearchConfig {
-    @field:Expose
-    @field:ConfigOption(name = "Enabled", desc = "Enable SkyHUD's profile-aware item finder.")
-    @field:ConfigEditorBoolean
-    @JvmField
-    var enabled: Boolean = true
-
-    @field:Expose
-    @field:ConfigOption(name = "Keybind", desc = "Open Item Search while on SkyBlock. This stays synchronized with Minecraft Controls > SkyHUD.")
-    @field:ConfigEditorKeybind(defaultKey = InputConstants.KEY_I)
-    @JvmField
-    var keybind: Int = InputConstants.KEY_I
-
-    @field:Expose
-    @field:ConfigOption(name = "Preserve Last Search", desc = "Keep the query and category when reopening Item Search during this client session.")
-    @field:ConfigEditorBoolean
-    @JvmField
-    var preserveLastSearch: Boolean = true
-
-    @field:Expose
-    @field:ConfigOption(name = "Match Lore", desc = "Include item lore in search matching.")
-    @field:ConfigEditorBoolean
-    @JvmField
-    var matchLore: Boolean = true
-
-    @field:Expose
-    @field:ConfigOption(name = "Match SkyBlock IDs", desc = "Include internal SkyBlock item IDs in search matching.")
-    @field:ConfigEditorBoolean
-    @JvmField
-    var matchIds: Boolean = true
-
-    @field:Expose
-    @field:ConfigOption(name = "Match Locations", desc = "Include source and location names in search matching.")
-    @field:ConfigEditorBoolean
-    @JvmField
-    var matchLocations: Boolean = false
-
-    @field:Expose
-    @field:ConfigOption(name = "Stale Warnings", desc = "Mark cached observations older than 24 hours.")
-    @field:ConfigEditorBoolean
-    @JvmField
-    var staleWarnings: Boolean = true
-
-    @field:Expose
-    @field:ConfigOption(name = "Warp to Island", desc = "Allow island-chest results to run /warp island before highlighting. No walking or chest opening is performed.")
-    @field:ConfigEditorBoolean
-    @JvmField
-    var warpToIsland: Boolean = false
-
-    @field:ConfigOption(name = "Sources", desc = "Choose which item sources are included in the index.")
-    @field:Accordion
-    @field:Expose
-    @JvmField
-    var sources = ItemSearchSourceConfig()
-
-    @field:ConfigOption(name = "Clear Island Chests", desc = "Delete only SkyHUD's island-chest observations for the active SkyBlock profile.")
-    @field:ConfigEditorButton(buttonText = "Clear")
-    @JvmField
-    @Transient
-    var clearIslandChests = Runnable(ItemSearchDataManager::clearIslandChests)
-
-    @field:ConfigOption(name = "Clear Current Profile Search Data", desc = "Delete SkyHUD-owned item-search observations for the active profile. SkyblockAPI caches are never changed.")
-    @field:ConfigEditorButton(buttonText = "Clear")
-    @JvmField
-    @Transient
-    var clearCurrentProfile = Runnable(ItemSearchDataManager::clearCurrentProfile)
-}
-
-class ItemSearchSourceConfig {
-    @field:Expose @field:ConfigOption(name = "Inventory", desc = "Normal inventory and armor observations.") @field:ConfigEditorBoolean @JvmField var inventory = true
-    @field:Expose @field:ConfigOption(name = "Equipped Equipment", desc = "Normal-realm equipped equipment from SkyblockAPI.") @field:ConfigEditorBoolean @JvmField var equippedEquipment = true
-    @field:Expose @field:ConfigOption(name = "Storage", desc = "Ender Chest and backpack pages.") @field:ConfigEditorBoolean @JvmField var storage = true
-    @field:Expose @field:ConfigOption(name = "Rift", desc = "Rift inventory, armor, equipment, and Storage.") @field:ConfigEditorBoolean @JvmField var rift = true
-    @field:Expose @field:ConfigOption(name = "Loadouts", desc = "SkyHUD Loadout observations.") @field:ConfigEditorBoolean @JvmField var loadouts = true
-    @field:Expose @field:ConfigOption(name = "Wardrobe", desc = "Armor Wardrobe observations.") @field:ConfigEditorBoolean @JvmField var wardrobe = true
-    @field:Expose @field:ConfigOption(name = "Equipment Wardrobe", desc = "Equipment Wardrobe observations.") @field:ConfigEditorBoolean @JvmField var equipmentWardrobe = true
-    @field:Expose @field:ConfigOption(name = "Accessory Bag", desc = "Cached Accessory Bag contents.") @field:ConfigEditorBoolean @JvmField var accessoryBag = true
-    @field:Expose @field:ConfigOption(name = "Sacks", desc = "Cached aggregate Sack contents.") @field:ConfigEditorBoolean @JvmField var sacks = true
-    @field:Expose @field:ConfigOption(name = "Sack of Sacks", desc = "Legitimately observed Sack of Sacks items.") @field:ConfigEditorBoolean @JvmField var sackOfSacks = true
-    @field:Expose @field:ConfigOption(name = "Personal Vault", desc = "Cached Personal Vault contents.") @field:ConfigEditorBoolean @JvmField var vault = true
-    @field:Expose @field:ConfigOption(name = "Forge", desc = "Cached Forge slots.") @field:ConfigEditorBoolean @JvmField var forge = true
-    @field:Expose @field:ConfigOption(name = "Museum", desc = "Cached Museum contents.") @field:ConfigEditorBoolean @JvmField var museum = true
-    @field:Expose @field:ConfigOption(name = "Island Chests", desc = "Legitimately opened private-island chests.") @field:ConfigEditorBoolean @JvmField var islandChests = true
-    @field:Expose @field:ConfigOption(name = "Installed Parts", desc = "Installed drill and fishing-rod parts.") @field:ConfigEditorBoolean @JvmField var installedParts = true
 }
 
 class FeatureToggle(

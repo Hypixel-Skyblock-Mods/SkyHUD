@@ -4,7 +4,7 @@ import com.google.gson.GsonBuilder
 import java.util.UUID
 import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.item.ItemStack
-import org.hypixelskyblockmods.skyhud.feature.itemsearch.SkyBlockProfileStore
+import org.hypixelskyblockmods.skyhud.profile.SkyHudProfileStore
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyBlockProfileIdentity
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiStorageAdapter
 import org.hypixelskyblockmods.skyhud.util.ItemStackSerialization
@@ -223,7 +223,7 @@ object EnderChestRepository {
         activeIdentity = profile
         lastSavedJson = null
         saveAfterEpochMillis = null
-        SkyBlockProfileStore.clear("storage-pages", profile)
+        SkyHudProfileStore.clear("storage-pages", profile)
     }
 
     private fun ensureProfileState(): StorageProfileKey? {
@@ -296,7 +296,7 @@ object EnderChestRepository {
     }
 
     private fun loadObservedPages(profile: SkyBlockProfileIdentity) {
-        lastSavedJson = SkyBlockProfileStore.read("storage-pages", profile)
+        lastSavedJson = SkyHudProfileStore.read("storage-pages", profile)
         val json = lastSavedJson ?: return
         runCatching {
             gson.fromJson(json, SavedStoragePages::class.java).pages.forEach { saved ->
@@ -338,7 +338,7 @@ object EnderChestRepository {
         }.toMutableList())
         val json = gson.toJson(saved)
         if (json == lastSavedJson) return
-        if (SkyBlockProfileStore.write("storage-pages", profile, json)) lastSavedJson = json
+        if (SkyHudProfileStore.write("storage-pages", profile, json)) lastSavedJson = json
     }
 
     private fun pagesMatch(first: CachedEnderChestPage?, second: CachedEnderChestPage): Boolean {
