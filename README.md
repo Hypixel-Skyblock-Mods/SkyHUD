@@ -5,7 +5,9 @@ inventory menus with clean, modern interfaces.
 
 ## Features
 
-### Item Search
+### Inventory Search
+
+![SkyHUD Inventory Search interface](https://cdn.modrinth.com/data/YfhLlJko/images/8d13308d510c92869fc78cf377f7835c79b48d78.png)
 
 - Press `I` while on SkyBlock, or run `/skyhud search [query]`, to open a
   standalone SkyHUD-native finder without a player-inventory panel. The bind
