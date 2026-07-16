@@ -13,6 +13,7 @@ import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentController
 import org.hypixelskyblockmods.skyhud.feature.loadouts.LoadoutController
 import org.hypixelskyblockmods.skyhud.feature.wardrobe.WardrobeController
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
+import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiIntegration
 import org.slf4j.LoggerFactory
 
 object SkyHudClient : ClientModInitializer {
@@ -20,6 +21,7 @@ object SkyHudClient : ClientModInitializer {
 
     override fun onInitializeClient() {
         SkyHudConfigManager.initialize()
+        SkyblockApiIntegration.initialize()
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
             dispatcher.register(
                 ClientCommands.literal("skyhud").executes {

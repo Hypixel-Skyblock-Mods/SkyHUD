@@ -88,6 +88,22 @@ object EnderChestController {
         overlay.refreshBackingMenu(client.player?.containerMenu)
     }
 
+    fun onProfileChanged() {
+        val client = Minecraft.getInstance()
+        val overlay = activeScreen
+        pendingOverviewReturn = null
+        overviewRequestInFlight = false
+        showOriginalNext = false
+        originalMenu = null
+        OverlayTransitionGuard.clear(overlay)
+        activeScreen = null
+        EnderChestRepository.resetSession()
+        if (overlay != null) {
+            client.player?.closeContainer()
+            if (ScreenCompat.currentScreen() === overlay) ScreenCompat.setScreen(null)
+        }
+    }
+
     private fun onOverlayClosed() {
         OverlayTransitionGuard.clear(activeScreen)
         activeScreen = null

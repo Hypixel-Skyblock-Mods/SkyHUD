@@ -68,6 +68,7 @@ object EnderChestRepository {
     private val availablePages = sortedSetOf<StoragePageKey>()
     private var apiPages = emptyMap<StoragePageKey, CachedEnderChestPage>()
     private var loadedProfile: StorageProfileKey? = null
+    private var activeIdentity: SkyBlockProfileIdentity? = null
     private var livePageKey: StoragePageKey? = null
     private var liveMenu: ChestMenu? = null
     var hasDiscoveredOverview: Boolean = false
@@ -79,7 +80,7 @@ object EnderChestRepository {
 
     fun remember(key: StoragePageKey, menu: ChestMenu) {
         ensureProfileState()
-        availablePages.add(key)
+        if (availablePages.add(key)) activeIdentity?.let { StoragePageCatalog.remember(it, setOf(key)) }
         livePageKey = key
         liveMenu = menu
         refreshApiSnapshot()
@@ -87,7 +88,8 @@ object EnderChestRepository {
 
     fun rememberEnderChest(page: Int, totalPages: Int, menu: ChestMenu) {
         ensureProfileState()
-        (1..totalPages).mapTo(availablePages, StoragePageKey::enderChest)
+        val discovered = (1..totalPages).map(StoragePageKey::enderChest)
+        if (availablePages.addAll(discovered)) activeIdentity?.let { StoragePageCatalog.remember(it, discovered) }
         remember(StoragePageKey.enderChest(page), menu)
     }
 
@@ -96,9 +98,11 @@ object EnderChestRepository {
         val discovered = sortedSetOf<StoragePageKey>()
         (1..9).map(StoragePageKey::enderChest).filterTo(discovered) { isAvailableOverviewSlot(it, menu) }
         (1..18).map(StoragePageKey::backpack).filterTo(discovered) { isAvailableOverviewSlot(it, menu) }
+        val changed = !hasDiscoveredOverview || availablePages != discovered
         availablePages.clear()
         availablePages.addAll(discovered)
         hasDiscoveredOverview = true
+        if (changed) activeIdentity?.let { StoragePageCatalog.replaceOverview(it, discovered) }
         livePageKey = null
         liveMenu = null
         refreshApiSnapshot()
@@ -151,18 +155,26 @@ object EnderChestRepository {
         apiPages = emptyMap()
         hasDiscoveredOverview = false
         clearLiveBacking()
-        loadedProfile = currentProfileKey()
+        activeIdentity = null
+        loadedProfile = null
     }
 
     private fun ensureProfileState(): StorageProfileKey? {
-        val profile = currentProfileKey()
+        val identity = SkyblockApiStorageAdapter.currentProfile()
+        val profile = identity?.toStorageKey()
         if (loadedProfile != profile) {
             availablePages.clear()
             apiPages = emptyMap()
             hasDiscoveredOverview = false
             clearLiveBacking()
             loadedProfile = profile
+            if (identity != null) {
+                val saved = StoragePageCatalog.snapshot(identity)
+                availablePages.addAll(saved.availablePages)
+                hasDiscoveredOverview = saved.overviewDiscovered
+            }
         }
+        activeIdentity = identity
         return profile
     }
 
