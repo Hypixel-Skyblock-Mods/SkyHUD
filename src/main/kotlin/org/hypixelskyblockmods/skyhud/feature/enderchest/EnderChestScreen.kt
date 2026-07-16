@@ -15,6 +15,7 @@ import org.hypixelskyblockmods.skyhud.gui.SkyHudControls
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
 
 class EnderChestScreen(
+    initialScroll: Double,
     private val editOriginal: () -> Unit,
     private val beginMenuTransition: () -> Unit,
     private val closed: () -> Unit,
@@ -40,7 +41,7 @@ class EnderChestScreen(
     private var currentPage: StoragePageKey? = null
     private var backingMenu: ChestMenu? = null
     private var searchText = ""
-    private var scroll = 0.0
+    private var scroll = initialScroll.coerceAtLeast(0.0)
     private var maxScroll = 0.0
     private var pageBounds = emptyList<PageBounds>()
     private var inventorySlotBounds = emptyList<InventorySlotBounds>()
@@ -104,6 +105,8 @@ class EnderChestScreen(
         highlightUntilEpochMillis = System.currentTimeMillis() + 10_000L
         searchText = ""
     }
+
+    fun scrollPosition(): Double = scroll
 
     override fun init() {
         super.init()

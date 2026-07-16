@@ -24,6 +24,7 @@ object EnderChestController {
     private var showOriginalNext = false
     private var originalMenu: ChestMenu? = null
     private var pendingSearchHighlight: PendingSearchHighlight? = null
+    private var savedScroll = 0.0
 
     fun redirectIncoming(client: Minecraft, screen: Screen): Screen {
         if (screen === activeScreen) return screen
@@ -38,6 +39,7 @@ object EnderChestController {
             showOriginalNext = false
             originalMenu = target.menu
             if (target is EnderChestTarget.Overview) EnderChestRepository.rememberOverview(target.menu)
+            savedScroll = activeScreen?.scrollPosition() ?: savedScroll
             activeScreen = null
             EnderChestRepository.clearLiveBacking()
             return false
@@ -65,7 +67,12 @@ object EnderChestController {
             }
         }
 
-        val overlay = activeScreen ?: EnderChestScreen(::openOriginal, ::beginMenuTransition, ::onOverlayClosed).also {
+        val overlay = activeScreen ?: EnderChestScreen(
+            savedScroll,
+            ::openOriginal,
+            ::beginMenuTransition,
+            ::onOverlayClosed,
+        ).also {
             activeScreen = it
         }
         overlay.bind(target)
@@ -116,6 +123,7 @@ object EnderChestController {
             client.player?.closeContainer()
             if (ScreenCompat.currentScreen() === overlay) ScreenCompat.setScreen(null)
         }
+        savedScroll = 0.0
     }
 
     fun navigateToSearchResult(page: StoragePageKey, itemIndex: Int, expectedStack: ItemStack, stale: Boolean) {
@@ -160,6 +168,7 @@ object EnderChestController {
         !first.isEmpty && ItemStack.matches(first.copyWithCount(1), second.copyWithCount(1))
 
     private fun onOverlayClosed() {
+        savedScroll = activeScreen?.scrollPosition() ?: savedScroll
         EnderChestRepository.flush()
         OverlayTransitionGuard.clear(activeScreen)
         activeScreen = null
