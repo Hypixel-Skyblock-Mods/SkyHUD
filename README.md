@@ -68,7 +68,9 @@ container layouts, and action items; unrelated chests are left untouched.
 
 SkyHUD requires Fabric Loader 0.19.3 or newer, Fabric API, Fabric Language
 Kotlin, and Java 25. The correct MoulConfig platform is bundled in each SkyHUD
-JAR.
+JAR. [SkyblockAPI](https://github.com/SkyblockAPI/SkyblockAPI) 4.2.10 is also
+embedded, together with its required runtime libraries, so players do not need
+to install SkyblockAPI or Hypixel Mod API separately.
 
 ## Settings
 
@@ -94,3 +96,10 @@ versions/mc26_2/build/libs/SkyHUD-1.0.0+mc26.2.jar
 
 SkyHUD is behaviorally informed by established SkyBlock storage mods, but its
 UI and implementation are independent and it does not depend on Firmament.
+
+## Embedded libraries
+
+SkyHUD uses SkyblockAPI as its profile-aware Ender Chest and backpack cache.
+SkyblockAPI is distributed under the MIT License; its complete license notice
+is packaged in every SkyHUD JAR at
+`META-INF/licenses/skyblock-api/LICENSE.txt`.
