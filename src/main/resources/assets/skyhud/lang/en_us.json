@@ -1,3 +1,5 @@
 {
+  "key.category.skyhud.controls": "SkyHUD",
+  "key.skyhud.item_search": "Open Item Search",
   "modmenu.descriptionTranslation.skyhud": "Modern interfaces for Hypixel SkyBlock storage and loadouts."
 }

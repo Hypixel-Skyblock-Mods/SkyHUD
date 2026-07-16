@@ -27,6 +27,14 @@ class SkyHudConfig : Config() {
     var dashboard = DashboardConfig()
 
     @field:Category(
+        name = "Item Search",
+        desc = "Configure SkyHUD's profile-aware item finder.",
+    )
+    @field:Expose
+    @JvmField
+    var itemSearch = ItemSearchConfig()
+
+    @field:Category(
         name = "HUDS",
         desc = "Configure SkyHUD's interface overhauls.",
     )
@@ -100,15 +108,6 @@ private fun defaultMainColor(): ChromaColour =
 
 class HudConfig {
     @field:ConfigOption(
-        name = "Item Search",
-        desc = "Find items across the current SkyBlock profile without moving them.",
-    )
-    @field:Accordion
-    @field:Expose
-    @JvmField
-    var itemSearch = ItemSearchConfig()
-
-    @field:ConfigOption(
         name = "Ender Chest",
         desc = "Configure SkyHUD's modern Ender Chest overview.",
     )
@@ -153,7 +152,7 @@ class ItemSearchConfig {
     var enabled: Boolean = true
 
     @field:Expose
-    @field:ConfigOption(name = "Keybind", desc = "Open Item Search while on SkyBlock.")
+    @field:ConfigOption(name = "Keybind", desc = "Open Item Search while on SkyBlock. This stays synchronized with Minecraft Controls > SkyHUD.")
     @field:ConfigEditorKeybind(defaultKey = InputConstants.KEY_O)
     @JvmField
     var keybind: Int = InputConstants.KEY_O

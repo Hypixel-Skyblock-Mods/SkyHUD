@@ -8,7 +8,8 @@ inventory menus with clean, modern interfaces.
 ### Item Search
 
 - Press `O` while on SkyBlock, or run `/skyhud search [query]`, to open a
-  standalone SkyHUD-native finder without a player-inventory panel.
+  standalone SkyHUD-native finder without a player-inventory panel. The bind
+  appears as **Open Item Search** under Minecraft Controls > SkyHUD.
 - Searches the active SkyBlock profile across live and cached inventory,
   Storage, Rift data, Loadouts, Wardrobe and Equipment, accessories, sacks,
   Personal Vault, Forge, Museum, installed tool parts, and legitimately opened
@@ -99,11 +100,11 @@ to install SkyblockAPI or Hypixel Mod API separately.
 
 Run `/skyhud` or use Mod Menu's Config button. Item Search, Ender Chest,
 Loadouts, Wardrobe, and Equipment Sets can be enabled independently, and
-settings are stored in `config/skyhud.json`. Item Search settings include its
-keybind, match fields, stale warnings, optional island warping, individual
-source toggles, and profile-scoped clear actions. The Dashboard opens by
-default and shows the installed SkyHUD version plus whether a newer stable
-GitHub release is available.
+settings are stored in `config/skyhud.json`. Item Search has its own top-level
+settings section with the synchronized keybind, match fields, stale warnings,
+optional island warping, individual source toggles, and profile-scoped clear
+actions. The Dashboard opens by default and shows the installed SkyHUD version
+plus whether a newer stable GitHub release is available.
 
 ## Building
 

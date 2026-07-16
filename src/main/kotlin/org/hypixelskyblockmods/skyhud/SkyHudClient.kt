@@ -21,6 +21,7 @@ import org.hypixelskyblockmods.skyhud.feature.itemsearch.IslandChestRepository
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.SackOfSacksRepository
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.ItemSearchController
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.ItemSearchDataManager
+import org.hypixelskyblockmods.skyhud.feature.itemsearch.ItemSearchKeyMapping
 import org.hypixelskyblockmods.skyhud.feature.wardrobe.WardrobeController
 import org.hypixelskyblockmods.skyhud.feature.wardrobe.WardrobeRepository
 import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentRepository
@@ -34,6 +35,7 @@ object SkyHudClient : ClientModInitializer {
 
     override fun onInitializeClient() {
         SkyHudConfigManager.initialize()
+        ItemSearchKeyMapping.initialize()
         SkyblockApiIntegration.initialize()
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
             dispatcher.register(

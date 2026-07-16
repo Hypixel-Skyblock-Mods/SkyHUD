@@ -174,7 +174,7 @@ class ItemSearchScreen(
         val contentWidth = (right - left - 5).coerceAtLeast(slotPitch)
         val columns = (contentWidth / slotPitch).coerceAtLeast(1)
         val visibleRows = ((bottom - top) / slotPitch).coerceAtLeast(1)
-        val config = SkyHudConfigManager.config.huds.itemSearch
+        val config = SkyHudConfigManager.config.itemSearch
         val state = ItemSearchController.state()
         val results = state.index.query(
             query,

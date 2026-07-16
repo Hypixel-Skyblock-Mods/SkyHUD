@@ -1,9 +1,11 @@
 package org.hypixelskyblockmods.skyhud.feature.itemsearch
 
+import com.mojang.blaze3d.platform.InputConstants
 import java.nio.file.Files
 import java.util.UUID
 import net.minecraft.core.BlockPos
 import net.minecraft.world.item.ItemStack
+import org.hypixelskyblockmods.skyhud.config.SkyHudConfig
 import org.hypixelskyblockmods.skyhud.feature.enderchest.StoragePageType
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyBlockProfileIdentity
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.storagePageKeyFromApiIndex
@@ -15,6 +17,11 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ItemSearchInfrastructureTest {
+    @Test
+    fun `item search is a top level config section defaulting to O`() {
+        assertEquals(InputConstants.KEY_O, SkyHudConfig().itemSearch.keybind)
+    }
+
     @Test
     fun `storage api indexes convert to one based validated pages`() {
         assertEquals(1, storagePageKeyFromApiIndex(StoragePageType.ENDER_CHEST, 0)?.number)

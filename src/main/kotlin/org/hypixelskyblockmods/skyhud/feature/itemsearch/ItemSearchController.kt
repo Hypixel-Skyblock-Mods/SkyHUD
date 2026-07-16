@@ -1,6 +1,5 @@
 package org.hypixelskyblockmods.skyhud.feature.itemsearch
 
-import com.mojang.blaze3d.platform.InputConstants
 import java.util.concurrent.CompletableFuture
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.EditBox
@@ -25,7 +24,6 @@ object ItemSearchController {
 
     private val logger = LoggerFactory.getLogger("SkyHUD Item Search")
     private var generation = 0L
-    private var keyWasDown = false
     private var viewState = ViewState()
     private var activeScreen: ItemSearchScreen? = null
     private var sessionQuery = ""
@@ -34,7 +32,7 @@ object ItemSearchController {
     fun state(): ViewState = viewState
 
     fun open(query: String? = null) {
-        val config = SkyHudConfigManager.config.huds.itemSearch
+        val config = SkyHudConfigManager.config.itemSearch
         if (!config.enabled) {
             status("Item Search is disabled in SkyHUD settings.")
             return
@@ -61,7 +59,7 @@ object ItemSearchController {
         val profile = SkyblockApiStorageAdapter.currentProfile()
         viewState = ViewState(loading = true)
         targetScreen.onIndexUpdated()
-        val enabled = enabledSources(SkyHudConfigManager.config.huds.itemSearch.sources)
+        val enabled = enabledSources(SkyHudConfigManager.config.itemSearch.sources)
         val sourceSnapshot = ItemSourceRegistry.snapshot(enabled)
         sourceSnapshot.failures.forEach { (source, failure) -> logger.warn("Item Search source ${source.displayName} is unavailable", failure) }
         CompletableFuture.supplyAsync { ItemSearchIndex.build(sourceSnapshot.items) }
@@ -80,15 +78,14 @@ object ItemSearchController {
     }
 
     fun onClientTick(client: Minecraft) {
-        val config = SkyHudConfigManager.config.huds.itemSearch
-        val down = config.enabled && InputConstants.isKeyDown(client.window, config.keybind)
-        if (down && !keyWasDown && ScreenCompat.currentScreen() == null) open()
-        keyWasDown = down
+        val pressed = ItemSearchKeyMapping.consumeClick(client)
+        if (SkyHudConfigManager.config.itemSearch.enabled && pressed && ScreenCompat.currentScreen() == null) open()
     }
 
     fun onScreenKeyPressed(screen: Screen, key: Int): Boolean {
-        val config = SkyHudConfigManager.config.huds.itemSearch
-        if (!config.enabled || key != config.keybind || screen.focused is EditBox) return false
+        val config = SkyHudConfigManager.config.itemSearch
+        if (!config.enabled || !ItemSearchKeyMapping.matchesKeyboardKey(Minecraft.getInstance(), key) || screen.focused is EditBox) return false
+        ItemSearchKeyMapping.discardPendingClicks()
         if (screen is ItemSearchScreen) {
             screen.onClose()
             return true

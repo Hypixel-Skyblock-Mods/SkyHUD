@@ -16,7 +16,7 @@ object ItemSearchNavigator {
             item,
             SkyblockApiItemSearchAdapter.currentRealm(),
             SkyblockApiItemSearchAdapter.isOwnPrivateIsland(),
-            SkyHudConfigManager.config.huds.itemSearch.warpToIsland,
+            SkyHudConfigManager.config.itemSearch.warpToIsland,
         )
         if (route == ItemSearchRoute.INFORMATIONAL) {
             if (item.action is ItemNavigationAction.IslandChest) {
@@ -91,7 +91,7 @@ object ItemSearchNavigator {
     }
 
     private fun navigateIsland(action: ItemNavigationAction.IslandChest) {
-        val config = SkyHudConfigManager.config.huds.itemSearch
+        val config = SkyHudConfigManager.config.itemSearch
         if (SkyblockApiItemSearchAdapter.isOwnPrivateIsland()) {
             ItemSearchController.closeForNavigation()
             IslandChestRepository.highlight(action.positions)
