@@ -46,7 +46,7 @@ object SkyBlockProfileStore {
     }
 
     fun clearSearchObservations(profile: SkyBlockProfileIdentity) {
-        listOf("inventory", "sack-of-sacks", "island-chests").forEach { clear(it, profile) }
+        listOf("inventory", "sack-of-sacks", "island-chests", "loadouts", "wardrobe", "equipment").forEach { clear(it, profile) }
     }
 
     private fun profileDirectory(profile: SkyBlockProfileIdentity) = root

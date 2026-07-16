@@ -59,6 +59,8 @@ object SkyblockApiItemSearchAdapter {
 
     fun hasSkyBlockId(stack: ItemStack): Boolean = stack.getData(DataTypes.ID) != null
 
+    fun cleanName(stack: ItemStack): String = stack.cleanName
+
     fun chestPositions(pos: BlockPos): List<BlockPos>? {
         val level = Minecraft.getInstance().level ?: return null
         val state = level.getBlockState(pos)

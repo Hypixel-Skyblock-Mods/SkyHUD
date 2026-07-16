@@ -1,5 +1,6 @@
 package org.hypixelskyblockmods.skyhud
 
+import com.mojang.brigadier.arguments.StringArgumentType
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
@@ -16,6 +17,8 @@ import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentController
 import org.hypixelskyblockmods.skyhud.feature.loadouts.LoadoutController
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.PlayerInventorySearchRepository
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.IslandChestRepository
+import org.hypixelskyblockmods.skyhud.feature.itemsearch.ItemSearchController
+import org.hypixelskyblockmods.skyhud.feature.itemsearch.ItemSearchDataManager
 import org.hypixelskyblockmods.skyhud.feature.wardrobe.WardrobeController
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
@@ -30,10 +33,31 @@ object SkyHudClient : ClientModInitializer {
         SkyblockApiIntegration.initialize()
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
             dispatcher.register(
-                ClientCommands.literal("skyhud").executes {
-                    Minecraft.getInstance().execute(SkyHudConfigManager::open)
-                    1
-                },
+                ClientCommands.literal("skyhud")
+                    .executes {
+                        Minecraft.getInstance().execute(SkyHudConfigManager::open)
+                        1
+                    }
+                    .then(
+                        ClientCommands.literal("search")
+                            .executes {
+                                Minecraft.getInstance().execute { ItemSearchController.open() }
+                                1
+                            }
+                            .then(
+                                ClientCommands.literal("reset-island-chests").executes {
+                                    Minecraft.getInstance().execute(ItemSearchDataManager::clearIslandChests)
+                                    1
+                                },
+                            )
+                            .then(
+                                ClientCommands.argument("query", StringArgumentType.greedyString()).executes { context ->
+                                    val query = StringArgumentType.getString(context, "query")
+                                    Minecraft.getInstance().execute { ItemSearchController.open(query) }
+                                    1
+                                },
+                            ),
+                    ),
             )
         }
         ScreenEvents.AFTER_INIT.register(ScreenEvents.AfterInit { client, screen, _, _ ->
@@ -48,6 +72,7 @@ object SkyHudClient : ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(WardrobeController::onClientTick)
         ClientTickEvents.END_CLIENT_TICK.register { PlayerInventorySearchRepository.onClientTick() }
         ClientTickEvents.END_CLIENT_TICK.register { IslandChestRepository.onClientTick() }
+        ClientTickEvents.END_CLIENT_TICK.register(ItemSearchController::onClientTick)
         LevelRenderEvents.BEFORE_GIZMOS.register {
             val accent = SkyHudTheme.PRIMARY and 0x00FFFFFF
             val style = GizmoStyle.strokeAndFill(0xFF000000.toInt() or accent, 2.0f, 0x30000000 or accent)

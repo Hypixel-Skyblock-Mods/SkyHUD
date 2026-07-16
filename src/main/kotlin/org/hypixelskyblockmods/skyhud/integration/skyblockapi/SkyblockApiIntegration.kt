@@ -6,6 +6,7 @@ import net.minecraft.world.inventory.ChestMenu
 import org.hypixelskyblockmods.skyhud.feature.enderchest.EnderChestController
 import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentController
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.IslandChestRepository
+import org.hypixelskyblockmods.skyhud.feature.itemsearch.ItemSearchController
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.ItemSourceRegistry
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.PlayerInventorySearchRepository
 import org.hypixelskyblockmods.skyhud.feature.itemsearch.SackOfSacksRepository
@@ -20,6 +21,7 @@ import tech.thatgravyboat.skyblockapi.api.events.screen.ContainerCloseEvent
 import tech.thatgravyboat.skyblockapi.api.events.screen.ContainerInitializedEvent
 import tech.thatgravyboat.skyblockapi.api.events.screen.InventoryChangeEvent
 import tech.thatgravyboat.skyblockapi.api.events.screen.PlayerInventoryChangeEvent
+import tech.thatgravyboat.skyblockapi.api.events.screen.ScreenKeyPressedEvent
 
 object SkyblockApiIntegration {
     fun initialize() {
@@ -66,8 +68,12 @@ object SkyblockApiIntegration {
             val remainsChest = SkyblockApiItemSearchAdapter.isChest(event.state)
             Minecraft.getInstance().execute { IslandChestRepository.onBlockChanged(event.pos, remainsChest) }
         }
+        SkyBlockAPI.eventBus.register<ScreenKeyPressedEvent.Pre> { event ->
+            if (ItemSearchController.onScreenKeyPressed(event.screen, event.key)) event.cancel()
+        }
         SkyBlockAPI.eventBus.register<ProfileChangeEvent> {
             Minecraft.getInstance().execute {
+                ItemSearchController.onProfileChanged()
                 EnderChestController.onProfileChanged()
                 LoadoutController.onProfileChanged()
                 WardrobeController.onProfileChanged()

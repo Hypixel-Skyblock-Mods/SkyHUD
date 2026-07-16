@@ -41,6 +41,16 @@ object PlayerInventorySearchRepository {
 
     fun flush() = saveNow()
 
+    fun clearCurrentProfile() {
+        val profile = SkyblockApiStorageAdapter.currentProfile() ?: return
+        snapshots.clear()
+        loadedProfile = ProfileKey(profile.accountUuid, profile.profileName)
+        activeIdentity = profile
+        lastSavedJson = null
+        saveAfterEpochMillis = null
+        SkyBlockProfileStore.clear("inventory", profile)
+    }
+
     fun resetSession() {
         saveNow()
         snapshots.clear()

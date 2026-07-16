@@ -314,6 +314,15 @@ object LoadoutRepository {
         lastSavedJson = null
     }
 
+    fun clearCurrentProfile() {
+        val profile = SkyblockApiStorageAdapter.currentProfile() ?: return
+        pages.clear()
+        loadedProfile = ProfileKey(profile.accountUuid, profile.profileName)
+        activeIdentity = profile
+        lastSavedJson = null
+        SkyBlockProfileStore.clear("loadouts", profile)
+    }
+
     private fun ensureLoaded() {
         val identity = SkyblockApiStorageAdapter.currentProfile()
         val profile = identity?.let { ProfileKey(it.accountUuid, it.profileName) }
