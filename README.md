@@ -77,7 +77,8 @@ to install SkyblockAPI or Hypixel Mod API separately.
 Run `/skyhud` or use Mod Menu's Config button. Ender Chest, Loadouts, Wardrobe,
 and Equipment Sets can be enabled independently, and settings are stored in
 `config/skyhud.json`. The Dashboard opens by default and shows the installed
-SkyHUD version plus whether a newer stable GitHub release is available.
+SkyHUD version. Its **Check** button can query GitHub Releases for a newer stable
+version; SkyHUD does not make that request unless the button is pressed.
 
 ## Building
 
