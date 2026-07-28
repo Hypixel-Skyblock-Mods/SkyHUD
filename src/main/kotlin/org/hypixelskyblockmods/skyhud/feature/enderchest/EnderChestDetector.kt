@@ -21,6 +21,7 @@ sealed interface EnderChestTarget {
 object EnderChestDetector {
     private val enderChestPattern = Regex("^Ender Chest (?:✦ )?\\(([1-9][0-9]*)/([1-9][0-9]*)\\)$")
     private val backpackPattern = Regex("^.+Backpack (?:✦ )?\\(Slot #([1-9][0-9]*)\\)$")
+    private val riftStoragePattern = Regex("^Rift Storage \\(([1-9][0-9]*)/([1-9][0-9]*)\\)$")
 
     fun detect(screen: Screen): EnderChestTarget? {
         val containerScreen = screen as? AbstractContainerScreen<*> ?: return null
@@ -38,14 +39,24 @@ object EnderChestDetector {
         if (enderChestMatch != null) {
             val page = enderChestMatch.groupValues[1].toIntOrNull() ?: return null
             val total = enderChestMatch.groupValues[2].toIntOrNull() ?: return null
-            if (!validPageMenu(menu) || page !in 1..total || total > 9) return null
+            if (!validPageMenu(menu) || page !in 1..total || total !in StoragePageType.ENDER_CHEST.validNumbers) {
+                return null
+            }
             return EnderChestTarget.Page(StoragePageKey.enderChest(page), total, menu)
         }
 
-        val backpackMatch = backpackPattern.matchEntire(title) ?: return null
-        val page = backpackMatch.groupValues[1].toIntOrNull() ?: return null
-        if (!validPageMenu(menu) || page !in 1..18) return null
-        return EnderChestTarget.Page(StoragePageKey.backpack(page), null, menu)
+        val backpackMatch = backpackPattern.matchEntire(title)
+        if (backpackMatch != null) {
+            val page = backpackMatch.groupValues[1].toIntOrNull() ?: return null
+            if (!validPageMenu(menu) || page !in StoragePageType.BACKPACK.validNumbers) return null
+            return EnderChestTarget.Page(StoragePageKey.backpack(page), null, menu)
+        }
+
+        val riftStorageMatch = riftStoragePattern.matchEntire(title) ?: return null
+        val page = riftStorageMatch.groupValues[1].toIntOrNull() ?: return null
+        val total = riftStorageMatch.groupValues[2].toIntOrNull() ?: return null
+        if (!validPageMenu(menu) || page !in 1..total || total !in StoragePageType.RIFT.validNumbers) return null
+        return EnderChestTarget.Page(StoragePageKey.rift(page), total, menu)
     }
 
     private fun validPageMenu(menu: ChestMenu): Boolean {

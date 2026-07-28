@@ -9,6 +9,8 @@ inventory menus with clean, modern interfaces.
 
 - Shows Ender Chest pages and discovered Storage backpacks in one searchable,
   three-column overview.
+- Uses the same searchable interface for the two Rift Storage pages while
+  keeping Rift contents separate from normal Storage.
 - Queries the populated Storage overview when needed, so unlocked backpacks are
   discovered even when the overlay was opened from an Ender Chest command.
 - Remembers pages after they have been opened during the current session.
@@ -19,8 +21,11 @@ inventory menus with clean, modern interfaces.
   below the page grid.
 - Detects and renders each opened page's real row count, and supports persistent
   star favorites that move chosen pages to the top.
-- Preserves left-click, right-click, shift-click, carried stacks, counts,
-  tooltips, and server-side inventory behavior on the active page.
+- Preserves left-click, right-click, shift-click, carried stacks, vanilla
+  click-drag distribution, counts, tooltips, and server-side inventory behavior
+  on the active page and player inventory.
+- Restores the selected Storage page and scroll position when the overlay is
+  closed and reopened.
 - Uses a compact draggable scrollbar instead of the vanilla-style control.
 
 ### Wardrobe

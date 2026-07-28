@@ -25,6 +25,7 @@ object EnderChestController {
     private var originalMenu: ChestMenu? = null
     private var pendingSearchHighlight: PendingSearchHighlight? = null
     private var savedScroll = 0.0
+    private var savedSelectedPage: StoragePageKey? = null
 
     fun redirectIncoming(client: Minecraft, screen: Screen): Screen {
         if (screen === activeScreen) return screen
@@ -39,7 +40,7 @@ object EnderChestController {
             showOriginalNext = false
             originalMenu = target.menu
             if (target is EnderChestTarget.Overview) EnderChestRepository.rememberOverview(target.menu)
-            savedScroll = activeScreen?.scrollPosition() ?: savedScroll
+            rememberOverlayPosition()
             activeScreen = null
             EnderChestRepository.clearLiveBacking()
             return false
@@ -49,17 +50,30 @@ object EnderChestController {
             is EnderChestTarget.Overview -> {
                 EnderChestRepository.rememberOverview(target.menu)
                 commandAfterReplacement = pendingOverviewReturn?.navigationCommand
+                    ?: savedSelectedPage
+                        ?.takeIf { it.type != StoragePageType.RIFT }
+                        ?.navigationCommand
                 pendingOverviewReturn = null
                 overviewRequestInFlight = false
             }
             is EnderChestTarget.Page -> {
-                val total = target.totalEnderChestPages
-                if (total != null) {
-                    EnderChestRepository.rememberEnderChest(target.key.number, total, target.menu)
-                } else {
-                    EnderChestRepository.remember(target.key, target.menu)
+                when (target.key.type) {
+                    StoragePageType.ENDER_CHEST -> {
+                        val total = target.totalEnderChestPages ?: return false
+                        EnderChestRepository.rememberEnderChest(target.key.number, total, target.menu)
+                    }
+                    StoragePageType.BACKPACK -> EnderChestRepository.remember(target.key, target.menu)
+                    StoragePageType.RIFT -> {
+                        val total = target.totalEnderChestPages ?: return false
+                        EnderChestRepository.rememberRift(target.key.number, total, target.menu)
+                    }
                 }
-                if (!EnderChestRepository.hasDiscoveredOverview && !overviewRequestInFlight) {
+                savedSelectedPage = target.key
+                if (
+                    target.key.type != StoragePageType.RIFT &&
+                    !EnderChestRepository.hasDiscoveredOverview &&
+                    !overviewRequestInFlight
+                ) {
                     pendingOverviewReturn = target.key
                     overviewRequestInFlight = true
                     commandAfterReplacement = "storage"
@@ -124,6 +138,7 @@ object EnderChestController {
             if (ScreenCompat.currentScreen() === overlay) ScreenCompat.setScreen(null)
         }
         savedScroll = 0.0
+        savedSelectedPage = null
     }
 
     fun navigateToSearchResult(page: StoragePageKey, itemIndex: Int, expectedStack: ItemStack, stale: Boolean) {
@@ -168,11 +183,17 @@ object EnderChestController {
         !first.isEmpty && ItemStack.matches(first.copyWithCount(1), second.copyWithCount(1))
 
     private fun onOverlayClosed() {
-        savedScroll = activeScreen?.scrollPosition() ?: savedScroll
+        rememberOverlayPosition()
         EnderChestRepository.flush()
         OverlayTransitionGuard.clear(activeScreen)
         activeScreen = null
         EnderChestRepository.clearLiveBacking()
+    }
+
+    private fun rememberOverlayPosition() {
+        val overlay = activeScreen ?: return
+        savedScroll = overlay.scrollPosition()
+        overlay.selectedPage()?.let { savedSelectedPage = it }
     }
 
     private fun beginMenuTransition() {

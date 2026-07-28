@@ -13,28 +13,40 @@ import org.hypixelskyblockmods.skyhud.util.VanillaItemIds
 enum class StoragePageType {
     ENDER_CHEST,
     BACKPACK,
+    RIFT,
+    ;
+
+    val validNumbers: IntRange
+        get() = when (this) {
+            ENDER_CHEST -> 1..9
+            BACKPACK -> 1..18
+            RIFT -> 1..2
+        }
 }
 
 data class StoragePageKey(
     val type: StoragePageType,
     val number: Int,
 ) : Comparable<StoragePageKey> {
-    val overviewSlot: Int
+    val overviewSlot: Int?
         get() = when (type) {
             StoragePageType.ENDER_CHEST -> 8 + number
             StoragePageType.BACKPACK -> 26 + number
+            StoragePageType.RIFT -> null
         }
 
     val displayName: String
         get() = when (type) {
             StoragePageType.ENDER_CHEST -> "ENDER CHEST #$number"
             StoragePageType.BACKPACK -> "BACKPACK #$number"
+            StoragePageType.RIFT -> "RIFT STORAGE #$number"
         }
 
     val navigationCommand: String
         get() = when (type) {
             StoragePageType.ENDER_CHEST -> "enderchest $number"
             StoragePageType.BACKPACK -> "backpack $number"
+            StoragePageType.RIFT -> "enderchest $number"
         }
 
     override fun compareTo(other: StoragePageKey): Int =
@@ -43,12 +55,15 @@ data class StoragePageKey(
     private fun sortIndex(): Int = when (type) {
         StoragePageType.ENDER_CHEST -> number - 1
         StoragePageType.BACKPACK -> 9 + number - 1
+        StoragePageType.RIFT -> 27 + number - 1
     }
 
     companion object {
         fun enderChest(number: Int) = StoragePageKey(StoragePageType.ENDER_CHEST, number)
 
         fun backpack(number: Int) = StoragePageKey(StoragePageType.BACKPACK, number)
+
+        fun rift(number: Int) = StoragePageKey(StoragePageType.RIFT, number)
     }
 }
 
@@ -125,10 +140,23 @@ object EnderChestRepository {
         remember(StoragePageKey.enderChest(page), menu)
     }
 
+    fun rememberRift(page: Int, totalPages: Int, menu: ChestMenu) {
+        ensureProfileState()
+        val discovered = (1..totalPages).map(StoragePageKey::rift)
+        val changed = availablePages.removeIf {
+            it.type == StoragePageType.RIFT && it.number !in 1..totalPages
+        }
+        if (availablePages.addAll(discovered) || changed) {
+            activeIdentity?.let { StoragePageCatalog.replaceType(it, StoragePageType.RIFT, discovered) }
+        }
+        remember(StoragePageKey.rift(page), menu)
+    }
+
     fun rememberOverview(menu: ChestMenu) {
         ensureProfileState()
         captureLivePage()
-        val discovered = sortedSetOf<StoragePageKey>()
+        val discovered = availablePages
+            .filterTo(sortedSetOf()) { it.type == StoragePageType.RIFT }
         (1..9).map(StoragePageKey::enderChest).filterTo(discovered) { isAvailableOverviewSlot(it, menu) }
         (1..18).map(StoragePageKey::backpack).filterTo(discovered) { isAvailableOverviewSlot(it, menu) }
         val changed = !hasDiscoveredOverview || availablePages != discovered
@@ -301,8 +329,13 @@ object EnderChestRepository {
         runCatching {
             gson.fromJson(json, SavedStoragePages::class.java).pages.forEach { saved ->
                 val type = runCatching { StoragePageType.valueOf(saved.type) }.getOrNull() ?: return@forEach
-                val validNumbers = if (type == StoragePageType.ENDER_CHEST) 1..9 else 1..18
-                if (saved.number !in validNumbers || saved.rows !in 1..5 || saved.updatedAtEpochMillis <= 0) return@forEach
+                if (
+                    saved.number !in type.validNumbers ||
+                    saved.rows !in 1..5 ||
+                    saved.updatedAtEpochMillis <= 0
+                ) {
+                    return@forEach
+                }
                 val items = MutableList(saved.rows * 9) { ItemStack.EMPTY }
                 saved.items.forEach { item ->
                     if (item.index in items.indices) items[item.index] = ItemStackSerialization.decode(item.stack)
@@ -347,7 +380,8 @@ object EnderChestRepository {
     }
 
     private fun isAvailableOverviewSlot(key: StoragePageKey, menu: ChestMenu): Boolean {
-        val stack = menu.getSlot(key.overviewSlot).item
+        val slot = key.overviewSlot ?: return false
+        val stack = menu.getSlot(slot).item
         return !stack.isEmpty && !stack.isEmptyStorageSlot()
     }
 

@@ -60,9 +60,5 @@ object SkyblockApiStorageAdapter {
 
 internal fun storagePageKeyFromApiIndex(type: StoragePageType, index: Int): StoragePageKey? {
     val number = index + 1
-    val validRange = when (type) {
-        StoragePageType.ENDER_CHEST -> 1..9
-        StoragePageType.BACKPACK -> 1..18
-    }
-    return number.takeIf { it in validRange }?.let { StoragePageKey(type, it) }
+    return number.takeIf { it in type.validNumbers }?.let { StoragePageKey(type, it) }
 }

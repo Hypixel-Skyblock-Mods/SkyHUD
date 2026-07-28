@@ -51,9 +51,29 @@ object StoragePageCatalog {
 
     fun replaceOverview(profile: SkyBlockProfileIdentity, pages: Collection<StoragePageKey>) {
         val saved = profile(profile, create = true) ?: return
-        val encoded = pages.toSortedSet().map(::encode)
+        val encoded = saved.available
+            .mapNotNull(::decode)
+            .filterTo(sortedSetOf()) { it.type == StoragePageType.RIFT }
+            .apply { addAll(pages) }
+            .map(::encode)
         if (saved.overviewDiscovered && saved.available == encoded) return
         saved.overviewDiscovered = true
+        saved.available = encoded.toMutableList()
+        save()
+    }
+
+    fun replaceType(
+        profile: SkyBlockProfileIdentity,
+        type: StoragePageType,
+        pages: Collection<StoragePageKey>,
+    ) {
+        val saved = profile(profile, create = true) ?: return
+        val encoded = saved.available
+            .mapNotNull(::decode)
+            .filterTo(sortedSetOf()) { it.type != type }
+            .apply { addAll(pages.filter { it.type == type }) }
+            .map(::encode)
+        if (saved.available == encoded) return
         saved.available = encoded.toMutableList()
         save()
     }
@@ -113,10 +133,6 @@ object StoragePageCatalog {
         val parts = value.split(':', limit = 2)
         val type = parts.getOrNull(0)?.let { runCatching { StoragePageType.valueOf(it) }.getOrNull() } ?: return null
         val number = parts.getOrNull(1)?.toIntOrNull() ?: return null
-        val validRange = when (type) {
-            StoragePageType.ENDER_CHEST -> 1..9
-            StoragePageType.BACKPACK -> 1..18
-        }
-        return StoragePageKey(type, number).takeIf { number in validRange }
+        return StoragePageKey(type, number).takeIf { number in type.validNumbers }
     }
 }

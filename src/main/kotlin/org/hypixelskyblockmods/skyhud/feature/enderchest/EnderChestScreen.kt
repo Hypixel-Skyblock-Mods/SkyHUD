@@ -20,6 +20,12 @@ class EnderChestScreen(
     private val beginMenuTransition: () -> Unit,
     private val closed: () -> Unit,
 ) : Screen(Component.literal("SkyHUD Storage")) {
+    private companion object {
+        const val QUICK_CRAFT_HEADER_START = 0
+        const val QUICK_CRAFT_HEADER_CONTINUE = 1
+        const val QUICK_CRAFT_HEADER_END = 2
+    }
+
     private data class PageBounds(
         val key: StoragePageKey,
         val x: Int,
@@ -40,6 +46,7 @@ class EnderChestScreen(
 
     private var currentPage: StoragePageKey? = null
     private var backingMenu: ChestMenu? = null
+    private var riftContext = false
     private var searchText = ""
     private var scroll = initialScroll.coerceAtLeast(0.0)
     private var maxScroll = 0.0
@@ -49,6 +56,8 @@ class EnderChestScreen(
     private var highlightedPage: StoragePageKey? = null
     private var highlightedItemIndex: Int? = null
     private var highlightUntilEpochMillis = 0L
+    private var quickCraftingButton: Int? = null
+    private val quickCraftSlots = linkedSetOf<Int>()
 
     private val panelMaxWidth = 574
     private val panelMaxHeight = 430
@@ -69,19 +78,29 @@ class EnderChestScreen(
     private val inventorySidePadding = 6
 
     fun bind(target: EnderChestTarget) {
+        clearQuickCrafting()
         backingMenu = target.menu
         currentPage = when (target) {
             is EnderChestTarget.Overview -> {
+                riftContext = false
                 EnderChestRepository.rememberOverview(target.menu)
                 null
             }
 
             is EnderChestTarget.Page -> {
-                val total = target.totalEnderChestPages
-                if (total != null) {
-                    EnderChestRepository.rememberEnderChest(target.key.number, total, target.menu)
-                } else {
-                    EnderChestRepository.remember(target.key, target.menu)
+                riftContext = target.key.type == StoragePageType.RIFT
+                when (target.key.type) {
+                    StoragePageType.ENDER_CHEST -> {
+                        target.totalEnderChestPages?.let {
+                            EnderChestRepository.rememberEnderChest(target.key.number, it, target.menu)
+                        }
+                    }
+                    StoragePageType.BACKPACK -> EnderChestRepository.remember(target.key, target.menu)
+                    StoragePageType.RIFT -> {
+                        target.totalEnderChestPages?.let {
+                            EnderChestRepository.rememberRift(target.key.number, it, target.menu)
+                        }
+                    }
                 }
                 target.key
             }
@@ -107,6 +126,8 @@ class EnderChestScreen(
     }
 
     fun scrollPosition(): Double = scroll
+
+    fun selectedPage(): StoragePageKey? = currentPage
 
     override fun init() {
         super.init()
@@ -174,10 +195,11 @@ class EnderChestScreen(
             SkyHudTheme.PRIMARY,
         )
         graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.DIVIDER)
+        val heading = heading()
         val titleX = panelX + 8
-        val editX = headerEditX(panelX, "STORAGE")
+        val editX = headerEditX(panelX, heading)
         val editHovered = mouseX in editX until (editX + 33) && mouseY in (panelY + 4) until (panelY + 20)
-        graphics.text(font, "STORAGE", titleX, panelY + 8, SkyHudTheme.TEXT, false)
+        graphics.text(font, heading, titleX, panelY + 8, SkyHudTheme.TEXT, false)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
             editX,
@@ -188,7 +210,7 @@ class EnderChestScreen(
             SkyHudTheme.PRIMARY,
         )
         SkyHudControls.centeredText(graphics, font, "EDIT", editX, panelY + 4, 33, 16, SkyHudTheme.TEXT)
-        SkyHudControls.settingsButton(graphics, mouseX, mouseY, headerConfigX(panelX, "STORAGE"), panelY + 4)
+        SkyHudControls.settingsButton(graphics, mouseX, mouseY, headerConfigX(panelX, heading), panelY + 4)
 
         val searchWidth = 140
         SkyHudTheme.outlinedRoundedRect(
@@ -200,7 +222,9 @@ class EnderChestScreen(
             SkyHudTheme.SURFACE,
             SkyHudTheme.BORDER,
         )
-        drawToolkitButtons(graphics, mouseX, mouseY, panelX, panelY, panelWidth, searchWidth)
+        if (!riftContext) {
+            drawToolkitButtons(graphics, mouseX, mouseY, panelX, panelY, panelWidth, searchWidth)
+        }
 
         SkyHudTheme.outlinedRoundedRect(
             graphics,
@@ -235,7 +259,9 @@ class EnderChestScreen(
         val viewportTop = panelY + headerHeight + contentEdgeGap
         val viewportBottom = inventoryTop - contentEdgeGap
         val viewportHeight = (viewportBottom - viewportTop).coerceAtLeast(1)
-        val pages = EnderChestRepository.allPages().filter(::pageMatchesSearch)
+        val pages = EnderChestRepository.allPages()
+            .filter { (it.type == StoragePageType.RIFT) == riftContext }
+            .filter(::pageMatchesSearch)
         val pageRows = pages.chunked(pageColumns)
         val rowHeights = pageRows.map { row ->
             row.maxOfOrNull { pageHeight(pageRowCount(it)) } ?: 0
@@ -544,9 +570,10 @@ class EnderChestScreen(
         if (click.button() !in 0..1) return false
         val mouseX = click.x.toInt()
         val mouseY = click.y.toInt()
+        val heading = heading()
         if (
             click.button() == 0 &&
-            mouseX in headerEditX(panelX(), "STORAGE") until (headerEditX(panelX(), "STORAGE") + 33) &&
+            mouseX in headerEditX(panelX(), heading) until (headerEditX(panelX(), heading) + 33) &&
             mouseY in (panelY() + 4) until (panelY() + 20)
         ) {
             editOriginal()
@@ -554,7 +581,7 @@ class EnderChestScreen(
         }
         if (
             click.button() == 0 &&
-            mouseX in headerConfigX(panelX(), "STORAGE") until (headerConfigX(panelX(), "STORAGE") + 16) &&
+            mouseX in headerConfigX(panelX(), heading) until (headerConfigX(panelX(), heading) + 16) &&
             mouseY in (panelY() + 4) until (panelY() + 20)
         ) {
             onClose()
@@ -562,7 +589,11 @@ class EnderChestScreen(
             return true
         }
 
-        if (click.button() == 0 && mouseY in (panelY() + 3) until (panelY() + 3 + toolkitButtonSize)) {
+        if (
+            !riftContext &&
+            click.button() == 0 &&
+            mouseY in (panelY() + 3) until (panelY() + 3 + toolkitButtonSize)
+        ) {
             val farmingX = farmingToolkitX(panelX(), panelWidth(), 140)
             val huntingX = farmingX - toolkitButtonSize - toolkitButtonGap
             when {
@@ -589,10 +620,8 @@ class EnderChestScreen(
             return true
         }
 
-        inventorySlotBounds.firstOrNull {
-            mouseX in it.x until (it.x + inventorySlotSize) && mouseY in it.y until (it.y + inventorySlotSize)
-        }?.let {
-            clickBackingSlot(it.menuSlot, click.button(), click.hasShiftDown())
+        backingSlotAt(mouseX, mouseY)?.let {
+            pressBackingSlot(it, click)
             return true
         }
 
@@ -614,14 +643,6 @@ class EnderChestScreen(
             return true
         }
 
-        val itemX = mouseX - card.x
-        val itemY = mouseY - (card.y + pageTitleHeight)
-        val column = itemX / slotPitch
-        val row = itemY / slotPitch
-        val actualRows = EnderChestRepository.page(card.key)?.rows ?: 0
-        if (itemX >= 0 && itemY >= 0 && column in 0..8 && row in 0 until actualRows) {
-            clickBackingSlot(9 + row * 9 + column, click.button(), click.hasShiftDown())
-        }
         return true
     }
 
@@ -632,12 +653,32 @@ class EnderChestScreen(
             updateScrollFromMouse(click.y.toInt(), top, bottom)
             return true
         }
+        val quickCraftButton = quickCraftingButton
+        if (quickCraftButton != null && click.button() == quickCraftButton) {
+            val slot = backingSlotAt(click.x.toInt(), click.y.toInt())
+            if (slot != null && shouldAddSlotToQuickCraft(slot)) quickCraftSlots += slot
+            return true
+        }
         return super.mouseDragged(click, dragX, dragY)
     }
 
     override fun mouseReleased(click: MouseButtonEvent): Boolean {
         if (draggingScrollbar) {
             draggingScrollbar = false
+            return true
+        }
+        val quickCraftButton = quickCraftingButton
+        if (quickCraftButton != null) {
+            if (click.button() == quickCraftButton) {
+                if (quickCraftSlots.isNotEmpty()) {
+                    quickCraftToSlots(quickCraftButton)
+                } else {
+                    backingSlotAt(click.x.toInt(), click.y.toInt())?.let {
+                        clickBackingSlot(it, quickCraftButton, click.hasShiftDown())
+                    }
+                }
+            }
+            clearQuickCrafting()
             return true
         }
         return super.mouseReleased(click)
@@ -654,16 +695,108 @@ class EnderChestScreen(
     }
 
     private fun clickBackingSlot(slot: Int, button: Int, quickMove: Boolean) {
+        sendBackingInput(
+            slot,
+            button,
+            if (quickMove) ContainerInput.QUICK_MOVE else ContainerInput.PICKUP,
+        )
+    }
+
+    private fun sendBackingInput(slot: Int, button: Int, input: ContainerInput) {
         val menu = backingMenu ?: return
         val player = minecraft.player ?: return
-        if (player.containerMenu !== menu || slot !in menu.slots.indices) return
+        if (
+            player.containerMenu !== menu ||
+            (slot != AbstractContainerMenu.SLOT_CLICKED_OUTSIDE && slot !in menu.slots.indices)
+        ) {
+            return
+        }
         minecraft.gameMode?.handleContainerInput(
             menu.containerId,
             slot,
             button,
-            if (quickMove) ContainerInput.QUICK_MOVE else ContainerInput.PICKUP,
+            input,
             player,
         )
+    }
+
+    private fun pressBackingSlot(slot: Int, click: MouseButtonEvent) {
+        val menu = backingMenu ?: return
+        if (!menu.carried.isEmpty) {
+            quickCraftingButton = click.button()
+            quickCraftSlots.clear()
+            return
+        }
+        clickBackingSlot(slot, click.button(), click.hasShiftDown())
+    }
+
+    private fun shouldAddSlotToQuickCraft(slot: Int): Boolean {
+        val menu = backingMenu ?: return false
+        val carried = menu.carried
+        if (
+            carried.isEmpty ||
+            carried.count <= quickCraftSlots.size ||
+            slot !in menu.slots.indices
+        ) {
+            return false
+        }
+        val backingSlot = menu.getSlot(slot)
+        return AbstractContainerMenu.canItemQuickReplace(backingSlot, carried, true) &&
+            backingSlot.mayPlace(carried) &&
+            menu.canDragTo(backingSlot)
+    }
+
+    private fun quickCraftToSlots(button: Int) {
+        val menu = backingMenu ?: return
+        val type = if (button == 0) 0 else 1
+        sendBackingInput(
+            AbstractContainerMenu.SLOT_CLICKED_OUTSIDE,
+            AbstractContainerMenu.getQuickcraftMask(QUICK_CRAFT_HEADER_START, type),
+            ContainerInput.QUICK_CRAFT,
+        )
+        quickCraftSlots.forEach { slot ->
+            sendBackingInput(
+                slot,
+                AbstractContainerMenu.getQuickcraftMask(QUICK_CRAFT_HEADER_CONTINUE, type),
+                ContainerInput.QUICK_CRAFT,
+            )
+        }
+        sendBackingInput(
+            AbstractContainerMenu.SLOT_CLICKED_OUTSIDE,
+            AbstractContainerMenu.getQuickcraftMask(QUICK_CRAFT_HEADER_END, type),
+            ContainerInput.QUICK_CRAFT,
+        )
+        if (minecraft.player?.containerMenu !== menu) clearQuickCrafting()
+    }
+
+    private fun clearQuickCrafting() {
+        quickCraftingButton = null
+        quickCraftSlots.clear()
+    }
+
+    private fun backingSlotAt(mouseX: Int, mouseY: Int): Int? {
+        inventorySlotBounds.firstOrNull {
+            mouseX in it.x until (it.x + inventorySlotSize) &&
+                mouseY in it.y until (it.y + inventorySlotSize)
+        }?.let { return it.menuSlot }
+
+        if (!mouseInPageViewport(mouseX, mouseY)) return null
+        val current = currentPage ?: return null
+        val card = pageBounds.firstOrNull {
+            it.key == current &&
+                mouseX in it.x until (it.x + it.width) &&
+                mouseY in it.y until (it.y + it.height)
+        } ?: return null
+        val itemX = mouseX - card.x
+        val itemY = mouseY - (card.y + pageTitleHeight)
+        val column = itemX / slotPitch
+        val row = itemY / slotPitch
+        val actualRows = EnderChestRepository.page(card.key)?.rows ?: return null
+        return if (itemX >= 0 && itemY >= 0 && column in 0..8 && row in 0 until actualRows) {
+            9 + row * 9 + column
+        } else {
+            null
+        }
     }
 
     private fun pageRowCount(key: StoragePageKey): Int =
@@ -719,6 +852,8 @@ class EnderChestScreen(
     private fun headerConfigX(panelX: Int, heading: String): Int =
         headerEditX(panelX, heading) + 36
 
+    private fun heading(): String = if (riftContext) "RIFT STORAGE" else "STORAGE"
+
     private fun farmingToolkitX(panelX: Int, panelWidth: Int, searchWidth: Int): Int =
         searchX(panelX, panelWidth, searchWidth) - 4 - toolkitButtonSize - 5
 
@@ -731,6 +866,7 @@ class EnderChestScreen(
     private fun inventoryPanelX(): Int = (width - inventoryPanelWidth()) / 2
 
     override fun onClose() {
+        clearQuickCrafting()
         closed()
         backingMenu = null
         minecraft.player?.closeContainer()

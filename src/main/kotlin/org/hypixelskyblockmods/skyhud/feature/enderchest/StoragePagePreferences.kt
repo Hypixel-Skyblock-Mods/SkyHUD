@@ -58,8 +58,6 @@ object StoragePagePreferences {
         val parts = value.split(':', limit = 2)
         val type = parts.getOrNull(0)?.let { runCatching { StoragePageType.valueOf(it) }.getOrNull() } ?: return null
         val number = parts.getOrNull(1)?.toIntOrNull() ?: return null
-        if (type == StoragePageType.ENDER_CHEST && number !in 1..9) return null
-        if (type == StoragePageType.BACKPACK && number !in 1..18) return null
-        return StoragePageKey(type, number)
+        return StoragePageKey(type, number).takeIf { number in type.validNumbers }
     }
 }
