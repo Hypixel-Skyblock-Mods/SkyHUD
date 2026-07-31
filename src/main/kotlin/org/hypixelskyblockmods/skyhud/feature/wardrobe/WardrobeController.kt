@@ -5,6 +5,7 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
+import org.hypixelskyblockmods.skyhud.feature.loadouts.LoadoutController
 import org.hypixelskyblockmods.skyhud.feature.sets.SetCollectionScreen
 import org.hypixelskyblockmods.skyhud.gui.OverlayMenuTransition
 import org.hypixelskyblockmods.skyhud.gui.OverlayTransitionGuard
@@ -38,6 +39,10 @@ object WardrobeController {
         if (!SkyHudConfigManager.config.huds.wardrobe.enabled) return false
         val target = WardrobeDetector.detect(screen) ?: return false
         if (deferredScreen === screen) deferredScreen = null
+        if (LoadoutController.shouldKeepSetMenusNative()) {
+            keepNative(target.menu)
+            return false
+        }
         if (originalMenu === target.menu) return false
         if (showOriginalNext) {
             showOriginalNext = false
@@ -180,5 +185,17 @@ object WardrobeController {
         transition.onRecognized()
         OverlayTransitionGuard.arm(activeScreen)
         Minecraft.getInstance().player?.connection?.sendCommand("wardrobe")
+    }
+
+    private fun keepNative(menu: ChestMenu) {
+        WardrobeRepository.sets.flush()
+        transition.clear(activeScreen)
+        activeScreen = null
+        currentTarget = null
+        pendingAction = null
+        pendingSearchHighlight = null
+        showOriginalNext = false
+        originalMenu = menu
+        deferredScreen = null
     }
 }

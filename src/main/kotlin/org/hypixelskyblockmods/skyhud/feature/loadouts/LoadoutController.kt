@@ -20,7 +20,10 @@ object LoadoutController {
     private var showOriginalNext = false
     private var originalMenu: ChestMenu? = null
     private var deferredScreen: Screen? = null
+    private var nativeEditFlowActive = false
     private val transition = OverlayMenuTransition("loadouts")
+
+    fun shouldKeepSetMenusNative(): Boolean = nativeEditFlowActive
 
     fun redirectIncoming(client: Minecraft, screen: Screen): Screen {
         if (screen === activeScreen) return screen
@@ -38,9 +41,11 @@ object LoadoutController {
         val target = LoadoutDetector.detect(screen) ?: return false
         if (deferredScreen === screen) deferredScreen = null
         if (originalMenu === target.menu) return false
+        nativeEditFlowActive = false
         if (showOriginalNext) {
             showOriginalNext = false
             originalMenu = target.menu
+            nativeEditFlowActive = true
             activeScreen = null
             currentTarget = null
             return false
@@ -67,7 +72,12 @@ object LoadoutController {
 
     fun onClientTick(client: Minecraft) {
         LoadoutRepository.onClientTick()
-        val current = ScreenCompat.currentScreen() ?: return
+        val current = ScreenCompat.currentScreen()
+        if (current == null) {
+            nativeEditFlowActive = false
+            originalMenu = null
+            return
+        }
         if (originalMenu != null) {
             val target = LoadoutDetector.detect(current)
             if (target?.menu === originalMenu) return
@@ -99,6 +109,7 @@ object LoadoutController {
         showOriginalNext = false
         originalMenu = null
         deferredScreen = null
+        nativeEditFlowActive = false
         LoadoutRepository.resetSession()
         if (closeContainer) client.player?.closeContainer()
         if (overlay != null && ScreenCompat.currentScreen() === overlay) ScreenCompat.setScreen(null)
@@ -112,6 +123,7 @@ object LoadoutController {
         pendingAction = null
         pendingSearchHighlight = null
         deferredScreen = null
+        nativeEditFlowActive = false
     }
 
     private fun requestAction(page: Int, inventorySlot: Int?, action: LoadoutClickAction) {
@@ -156,6 +168,7 @@ object LoadoutController {
                     transition.scheduleRefresh()
                     transition.arm(activeScreen)
                 } else {
+                    nativeEditFlowActive = true
                     OverlayTransitionGuard.arm(activeScreen)
                 }
                 client.gameMode?.handleContainerInput(
@@ -183,6 +196,7 @@ object LoadoutController {
 
     private fun openOriginal() {
         showOriginalNext = true
+        nativeEditFlowActive = true
         deferredScreen = null
         transition.onRecognized()
         OverlayTransitionGuard.arm(activeScreen)

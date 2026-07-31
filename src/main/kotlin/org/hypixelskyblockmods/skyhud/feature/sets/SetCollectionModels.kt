@@ -71,6 +71,7 @@ class SetCollectionRepository(
     private data class ProfileKey(val accountUuid: java.util.UUID, val profileName: String)
 
     private var loadedProfile: ProfileKey? = null
+    private var profileStateInitialized = false
     private var activeIdentity: SkyBlockProfileIdentity? = null
     private var lastSavedJson: String? = null
     private var saveAfterEpochMillis: Long? = null
@@ -151,6 +152,7 @@ class SetCollectionRepository(
         saveNow()
         pages.clear()
         loadedProfile = null
+        profileStateInitialized = false
         activeIdentity = null
         lastSavedJson = null
         saveAfterEpochMillis = null
@@ -166,6 +168,7 @@ class SetCollectionRepository(
         val profile = SkyblockApiStorageAdapter.currentProfile() ?: return
         pages.clear()
         loadedProfile = ProfileKey(profile.accountUuid, profile.profileName)
+        profileStateInitialized = true
         activeIdentity = profile
         lastSavedJson = null
         saveAfterEpochMillis = null
@@ -175,34 +178,51 @@ class SetCollectionRepository(
     private fun ensureLoaded() {
         val identity = SkyblockApiStorageAdapter.currentProfile()
         val profile = identity?.let { ProfileKey(it.accountUuid, it.profileName) }
-        if (loadedProfile == profile) return
+        if (profileStateInitialized && loadedProfile == profile) {
+            activeIdentity = identity
+            return
+        }
+        val unscopedPages = if (profileStateInitialized && loadedProfile == null && profile != null) {
+            pages.toMap()
+        } else {
+            emptyMap()
+        }
+        saveNow()
         loadedProfile = profile
+        profileStateInitialized = true
         activeIdentity = identity
         pages.clear()
+        lastSavedJson = null
+        saveAfterEpochMillis = null
         lastSavedJson = identity?.let { SkyHudProfileStore.read(cacheName, it) }
-        val json = lastSavedJson ?: return
-        runCatching {
-            val saved = gson.fromJson(json, SavedSetCache::class.java)
-            saved.sets.groupBy(SavedSet::page).forEach { (page, savedSets) ->
-                pages[page] = CachedSetPage(
-                    page,
-                    savedSets.sortedBy(SavedSet::index).map { set ->
-                        CachedSetSlot(
-                            page = set.page,
-                            index = set.index,
-                            id = set.id,
-                            items = decodeIndexed(set.items, 4),
-                            selector = ItemStackSerialization.decode(set.selector),
-                            selected = set.selected,
-                            locked = set.locked,
-                            selectable = set.selectable,
-                            updatedAtEpochMillis = set.updatedAtEpochMillis?.takeIf { it > 0 },
-                        )
-                    },
-                )
+        lastSavedJson?.let { json ->
+            runCatching {
+                val saved = gson.fromJson(json, SavedSetCache::class.java)
+                saved.sets.groupBy(SavedSet::page).forEach { (page, savedSets) ->
+                    pages[page] = CachedSetPage(
+                        page,
+                        savedSets.sortedBy(SavedSet::index).map { set ->
+                            CachedSetSlot(
+                                page = set.page,
+                                index = set.index,
+                                id = set.id,
+                                items = decodeIndexed(set.items, 4),
+                                selector = ItemStackSerialization.decode(set.selector),
+                                selected = set.selected,
+                                locked = set.locked,
+                                selectable = set.selectable,
+                                updatedAtEpochMillis = set.updatedAtEpochMillis?.takeIf { it > 0 },
+                            )
+                        },
+                    )
+                }
+            }.onFailure {
+                logger.warn("Could not load $cacheName cache for $profile", it)
             }
-        }.onFailure {
-            logger.warn("Could not load $cacheName cache for $profile", it)
+        }
+        if (unscopedPages.isNotEmpty()) {
+            pages.putAll(unscopedPages)
+            scheduleSave()
         }
     }
 
