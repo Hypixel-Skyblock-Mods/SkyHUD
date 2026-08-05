@@ -22,6 +22,7 @@ object EquipmentController {
     private var showOriginalNext = false
     private var originalMenu: ChestMenu? = null
     private var deferredScreen: Screen? = null
+    private var nativeEditFlowActive = false
     private val transition = OverlayMenuTransition("eq")
 
     fun redirectIncoming(client: Minecraft, screen: Screen): Screen {
@@ -41,14 +42,20 @@ object EquipmentController {
         if (deferredScreen === screen) deferredScreen = null
         if (LoadoutController.shouldKeepSetMenusNative()) {
             keepNative(target.menu)
+            nativeEditFlowActive = false
             return false
         }
         if (originalMenu === target.menu) return false
         if (showOriginalNext) {
             showOriginalNext = false
             originalMenu = target.menu
+            nativeEditFlowActive = true
             activeScreen = null
             currentTarget = null
+            return false
+        }
+        if (nativeEditFlowActive) {
+            keepNative(target.menu)
             return false
         }
         if (transition.isRefreshing() && currentTarget?.menu === target.menu) return activeScreen != null
@@ -83,7 +90,12 @@ object EquipmentController {
 
     fun onClientTick(client: Minecraft) {
         EquipmentRepository.sets.onClientTick()
-        val current = ScreenCompat.currentScreen() ?: return
+        val current = ScreenCompat.currentScreen()
+        if (current == null) {
+            nativeEditFlowActive = false
+            originalMenu = null
+            return
+        }
         if (originalMenu != null) {
             val target = EquipmentDetector.detect(current)
             if (target?.menu === originalMenu) return
@@ -115,6 +127,7 @@ object EquipmentController {
         showOriginalNext = false
         originalMenu = null
         deferredScreen = null
+        nativeEditFlowActive = false
         EquipmentRepository.sets.resetSession()
         if (closeContainer) client.player?.closeContainer()
         if (overlay != null && ScreenCompat.currentScreen() === overlay) ScreenCompat.setScreen(null)
@@ -128,6 +141,7 @@ object EquipmentController {
         pendingAction = null
         pendingSearchHighlight = null
         deferredScreen = null
+        nativeEditFlowActive = false
     }
 
     private fun requestAction(page: Int, index: Int?) {
@@ -181,6 +195,7 @@ object EquipmentController {
 
     private fun openOriginal() {
         showOriginalNext = true
+        nativeEditFlowActive = true
         deferredScreen = null
         transition.onRecognized()
         OverlayTransitionGuard.arm(activeScreen)

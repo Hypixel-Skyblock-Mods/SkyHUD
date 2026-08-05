@@ -170,10 +170,7 @@ object EnderChestRepository {
     }
 
     fun refreshApiSnapshot() {
-        val profile = ensureProfileState() ?: run {
-            apiPages = emptyMap()
-            return
-        }
+        val profile = ensureProfileState() ?: return
         val pages = SkyblockApiStorageAdapter.allPages().associate { page ->
             val rows = ((page.items.size + 8) / 9).coerceIn(1, 5)
             page.key to CachedEnderChestPage(
@@ -184,7 +181,7 @@ object EnderChestRepository {
                 origin = StoragePageOrigin.SKYBLOCK_API,
             )
         }
-        if (profile == currentProfileKey()) apiPages = pages
+        if (profile == currentProfileKey()) apiPages = mergeApiSnapshot(apiPages, pages)
     }
 
     fun page(page: Int): CachedEnderChestPage? = page(StoragePageKey.enderChest(page))
@@ -198,11 +195,7 @@ object EnderChestRepository {
 
     fun allPages(): List<StoragePageKey> {
         ensureProfileState()
-        val visible = if (hasDiscoveredOverview) {
-            availablePages.toMutableSet()
-        } else {
-            (availablePages + observedPages.keys + apiPages.keys).toMutableSet()
-        }
+        val visible = (availablePages + observedPages.keys + apiPages.keys).toMutableSet()
         livePageKey?.let(visible::add)
         return StoragePagePreferences.order(visible)
     }
@@ -317,10 +310,30 @@ object EnderChestRepository {
             origin = StoragePageOrigin.SKYHUD_PROFILE,
         )
         val previous = observedPages[key]
+        if (previous != null && previous.items.any { !it.isEmpty } && observed.items.none { !it.isEmpty }) return
         val refreshTimestamp = previous?.updatedAtEpochMillis?.let { now - it >= TIMESTAMP_REFRESH_MILLIS } != false
         if (pagesMatch(previous, observed) && !refreshTimestamp) return
         observedPages[key] = observed
         if (activeIdentity != null) saveAfterEpochMillis = now + SAVE_DEBOUNCE_MILLIS
+    }
+
+    private fun mergeApiSnapshot(
+        previous: Map<StoragePageKey, CachedEnderChestPage>,
+        incoming: Map<StoragePageKey, CachedEnderChestPage>,
+    ): Map<StoragePageKey, CachedEnderChestPage> {
+        if (previous.isEmpty()) return incoming
+        val merged = previous.toMutableMap()
+        incoming.forEach { (key, candidate) ->
+            val remembered = merged[key]
+            merged[key] = when {
+                remembered == null -> candidate
+                candidate.items.any { !it.isEmpty } -> candidate
+                candidate.updatedAtEpochMillis != null &&
+                    candidate.updatedAtEpochMillis > (remembered.updatedAtEpochMillis ?: Long.MIN_VALUE) -> candidate
+                else -> remembered
+            }
+        }
+        return merged
     }
 
     private fun loadObservedPages(profile: SkyBlockProfileIdentity) {
@@ -397,6 +410,8 @@ internal fun preferredStoragePage(
 ): CachedEnderChestPage? = when {
     observed == null -> api
     api == null -> observed
+    observed.items.none { !it.isEmpty } && api.items.any { !it.isEmpty } -> api
+    api.items.none { !it.isEmpty } && observed.items.any { !it.isEmpty } -> observed
     (observed.updatedAtEpochMillis ?: Long.MIN_VALUE) >= (api.updatedAtEpochMillis ?: Long.MIN_VALUE) -> observed
     else -> api
 }

@@ -493,11 +493,18 @@ object LoadoutRepository {
             return remembered.takeIf { selector.state == SelectorDetailState.PRESENT } ?: ItemStack.EMPTY
         }
         if (requireMatchingName && selector.state == SelectorDetailState.PRESENT &&
-            normalizedItemName(observed.hoverName.string) != normalizedItemName(selector.value.orEmpty())
+            !itemNamesMatch(observed.hoverName.string, selector.value.orEmpty())
         ) {
-            return remembered ?: ItemStack.EMPTY
+            return remembered?.takeUnless(ItemStack::isEmpty) ?: observed
         }
         return observed
+    }
+
+    private fun itemNamesMatch(observed: String, selected: String): Boolean {
+        val observedName = normalizedItemName(observed)
+        val selectedName = normalizedItemName(selected)
+        return observedName.isNotBlank() && selectedName.isNotBlank() &&
+            (observedName == selectedName || observedName.contains(selectedName) || selectedName.contains(observedName))
     }
 
     private fun normalizedItemName(value: String): String =

@@ -41,11 +41,16 @@ object LoadoutController {
         val target = LoadoutDetector.detect(screen) ?: return false
         if (deferredScreen === screen) deferredScreen = null
         if (originalMenu === target.menu) return false
-        nativeEditFlowActive = false
         if (showOriginalNext) {
             showOriginalNext = false
             originalMenu = target.menu
             nativeEditFlowActive = true
+            activeScreen = null
+            currentTarget = null
+            return false
+        }
+        if (nativeEditFlowActive) {
+            originalMenu = target.menu
             activeScreen = null
             currentTarget = null
             return false

@@ -7,6 +7,7 @@ import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer
 import net.minecraft.client.renderer.PlayerSkinRenderCache
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.EquipmentSlot
@@ -58,6 +59,7 @@ class LoadoutScreen(
     private val cardHeight = 142
     private val slotSize = 20
     private val editSize = 18
+    private val armorSlots = listOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET)
 
     fun bind(target: LoadoutTarget) {
         currentPage = target.page
@@ -412,26 +414,33 @@ class LoadoutScreen(
             LoadoutMannequin(level, minecraft.playerSkinRenderCache(), minecraft.player?.skin ?: ClientMannequin.DEFAULT_SKIN)
                 .also { it.id = -100_000 - loadout.id }
         }
-        listOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET).forEachIndexed { index, slot ->
+        armorSlots.forEachIndexed { index, slot ->
             mannequin.setItemSlot(slot, loadout.armor.getOrNull(index) ?: ItemStack.EMPTY)
         }
         mannequin.tickCount = minecraft.player?.tickCount ?: 0
         val entityScale = ((right - left) * 0.74).toInt().coerceIn(28, 42)
         graphics.enableScissor(left, top, right, bottom)
+        val armorCanRender = loadout.armor.withIndex().all { (index, stack) ->
+            stack.isEmpty || HumanoidArmorLayer.shouldRender(stack, armorSlots.getOrNull(index) ?: EquipmentSlot.FEET)
+        }
         val rendered = try {
-            InventoryScreen.extractEntityInInventoryFollowsMouse(
-                graphics,
-                left,
-                top,
-                right,
-                bottom,
-                entityScale,
-                0f,
-                mouseX.toFloat(),
-                mouseY.toFloat(),
-                mannequin,
-            )
-            true
+            if (!armorCanRender) {
+                false
+            } else {
+                InventoryScreen.extractEntityInInventoryFollowsMouse(
+                    graphics,
+                    left,
+                    top,
+                    right,
+                    bottom,
+                    entityScale,
+                    0f,
+                    mouseX.toFloat(),
+                    mouseY.toFloat(),
+                    mannequin,
+                )
+                true
+            }
         } catch (_: RuntimeException) {
             false
         } finally {
