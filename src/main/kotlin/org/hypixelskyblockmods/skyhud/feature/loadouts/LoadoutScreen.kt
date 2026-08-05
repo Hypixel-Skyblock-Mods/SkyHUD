@@ -7,7 +7,6 @@ import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer
 import net.minecraft.client.renderer.PlayerSkinRenderCache
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.EquipmentSlot
@@ -420,47 +419,26 @@ class LoadoutScreen(
         mannequin.tickCount = minecraft.player?.tickCount ?: 0
         val entityScale = ((right - left) * 0.74).toInt().coerceIn(28, 42)
         graphics.enableScissor(left, top, right, bottom)
-        val armorCanRender = loadout.armor.withIndex().all { (index, stack) ->
-            stack.isEmpty || HumanoidArmorLayer.shouldRender(stack, armorSlots.getOrNull(index) ?: EquipmentSlot.FEET)
-        }
         val rendered = try {
-            if (!armorCanRender) {
-                false
-            } else {
-                InventoryScreen.extractEntityInInventoryFollowsMouse(
-                    graphics,
-                    left,
-                    top,
-                    right,
-                    bottom,
-                    entityScale,
-                    0f,
-                    mouseX.toFloat(),
-                    mouseY.toFloat(),
-                    mannequin,
-                )
-                true
-            }
+            InventoryScreen.extractEntityInInventoryFollowsMouse(
+                graphics,
+                left,
+                top,
+                right,
+                bottom,
+                entityScale,
+                0f,
+                mouseX.toFloat(),
+                mouseY.toFloat(),
+                mannequin,
+            )
+            true
         } catch (_: RuntimeException) {
             false
         } finally {
             graphics.disableScissor()
         }
-        if (!rendered) {
-            val fallbackX = left + ((right - left) - (slotSize * 2 + 3)) / 2
-            val fallbackY = top + ((bottom - top) - (slotSize * 2 + 3)) / 2
-            loadout.armor.forEachIndexed { index, stack ->
-                drawItemSlot(
-                    graphics,
-                    stack,
-                    fallbackX + (index % 2) * (slotSize + 3),
-                    fallbackY + (index / 2) * (slotSize + 3),
-                    mouseX,
-                    mouseY,
-                )
-            }
-            return
-        }
+        if (!rendered) return
         if (!mouseInContentViewport(mouseX, mouseY) || mouseX !in left until right || mouseY !in top until bottom) return
         val armorIndex = ((mouseY - top) * 4 / (bottom - top).coerceAtLeast(1)).coerceIn(0, 3)
         loadout.armor.getOrNull(armorIndex)?.takeUnless(ItemStack::isEmpty)?.let {
