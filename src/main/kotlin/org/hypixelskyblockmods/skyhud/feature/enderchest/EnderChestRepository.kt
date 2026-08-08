@@ -160,10 +160,19 @@ object EnderChestRepository {
         (1..9).map(StoragePageKey::enderChest).filterTo(discovered) { isAvailableOverviewSlot(it, menu) }
         (1..18).map(StoragePageKey::backpack).filterTo(discovered) { isAvailableOverviewSlot(it, menu) }
         val changed = !hasDiscoveredOverview || availablePages != discovered
+        val removedObservedPages = observedPages.keys.removeIf {
+            it.type != StoragePageType.RIFT && it !in discovered
+        }
+        apiPages = apiPages.filterKeys {
+            it.type == StoragePageType.RIFT || it in discovered
+        }
         availablePages.clear()
         availablePages.addAll(discovered)
         hasDiscoveredOverview = true
         if (changed) activeIdentity?.let { StoragePageCatalog.replaceOverview(it, discovered) }
+        if (removedObservedPages && activeIdentity != null) {
+            saveAfterEpochMillis = System.currentTimeMillis() + SAVE_DEBOUNCE_MILLIS
+        }
         livePageKey = null
         liveMenu = null
         refreshApiSnapshot()
@@ -195,7 +204,14 @@ object EnderChestRepository {
 
     fun allPages(): List<StoragePageKey> {
         ensureProfileState()
-        val visible = (availablePages + observedPages.keys + apiPages.keys).toMutableSet()
+        val visible = availablePages.toMutableSet()
+        if (!hasDiscoveredOverview) {
+            visible += observedPages.keys
+            visible += apiPages.keys
+        } else {
+            observedPages.keys.filterTo(visible) { it.type == StoragePageType.RIFT }
+            apiPages.keys.filterTo(visible) { it.type == StoragePageType.RIFT }
+        }
         livePageKey?.let(visible::add)
         return StoragePagePreferences.order(visible)
     }

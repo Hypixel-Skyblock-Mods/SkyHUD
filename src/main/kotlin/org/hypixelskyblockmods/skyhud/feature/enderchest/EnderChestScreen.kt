@@ -3,6 +3,7 @@ package org.hypixelskyblockmods.skyhud.feature.enderchest
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.world.inventory.AbstractContainerMenu
@@ -58,6 +59,11 @@ class EnderChestScreen(
     private var highlightUntilEpochMillis = 0L
     private var quickCraftingButton: Int? = null
     private val quickCraftSlots = linkedSetOf<Int>()
+    private var doubleClickSlot: Int? = null
+    private var lastClickedSlot: Int? = null
+    private var lastQuickMoved = ItemStack.EMPTY
+    private var lastMouseX = 0
+    private var lastMouseY = 0
 
     private val panelMaxWidth = 574
     private val panelMaxHeight = 430
@@ -79,6 +85,9 @@ class EnderChestScreen(
 
     fun bind(target: EnderChestTarget) {
         clearQuickCrafting()
+        doubleClickSlot = null
+        lastClickedSlot = null
+        lastQuickMoved = ItemStack.EMPTY
         backingMenu = target.menu
         currentPage = when (target) {
             is EnderChestTarget.Overview -> {
@@ -175,6 +184,8 @@ class EnderChestScreen(
         mouseY: Int,
         delta: Float,
     ) {
+        lastMouseX = mouseX
+        lastMouseY = mouseY
         val panelX = panelX()
         val panelY = panelY()
         val panelWidth = panelWidth()
@@ -567,9 +578,11 @@ class EnderChestScreen(
 
     override fun mouseClicked(click: MouseButtonEvent, doubled: Boolean): Boolean {
         if (super.mouseClicked(click, doubled)) return true
-        if (click.button() !in 0..1) return false
         val mouseX = click.x.toInt()
         val mouseY = click.y.toInt()
+        val backingSlot = backingSlotAt(mouseX, mouseY)
+        if (handleBoundMouseAction(backingSlot, click)) return true
+        if (click.button() !in 0..1) return false
         val heading = heading()
         if (
             click.button() == 0 &&
@@ -620,8 +633,20 @@ class EnderChestScreen(
             return true
         }
 
-        backingSlotAt(mouseX, mouseY)?.let {
+        backingSlot?.let {
+            doubleClickSlot = it.takeIf {
+                click.button() == 0 && doubled && lastClickedSlot == it
+            }
+            lastClickedSlot = it
             pressBackingSlot(it, click)
+            return true
+        }
+
+        doubleClickSlot = null
+        lastClickedSlot = null
+        if (!backingMenuCarried().isEmpty && clickedOutsidePanels(mouseX, mouseY)) {
+            quickCraftingButton = click.button()
+            quickCraftSlots.clear()
             return true
         }
 
@@ -667,21 +692,71 @@ class EnderChestScreen(
             draggingScrollbar = false
             return true
         }
+        val collectSlot = doubleClickSlot
+        if (collectSlot != null && click.button() == 0) {
+            collectMatchingStacks(collectSlot, click.hasShiftDown())
+            clearQuickCrafting()
+            doubleClickSlot = null
+            return true
+        }
         val quickCraftButton = quickCraftingButton
         if (quickCraftButton != null) {
             if (click.button() == quickCraftButton) {
                 if (quickCraftSlots.isNotEmpty()) {
                     quickCraftToSlots(quickCraftButton)
                 } else {
-                    backingSlotAt(click.x.toInt(), click.y.toInt())?.let {
-                        clickBackingSlot(it, quickCraftButton, click.hasShiftDown())
+                    val releaseSlot = backingSlotAt(click.x.toInt(), click.y.toInt())
+                    if (releaseSlot != null) {
+                        clickBackingSlot(releaseSlot, quickCraftButton, click.hasShiftDown())
+                    } else if (clickedOutsidePanels(click.x.toInt(), click.y.toInt())) {
+                        sendBackingInput(
+                            AbstractContainerMenu.SLOT_CLICKED_OUTSIDE,
+                            quickCraftButton,
+                            ContainerInput.PICKUP,
+                        )
                     }
                 }
             }
             clearQuickCrafting()
+            doubleClickSlot = null
             return true
         }
         return super.mouseReleased(click)
+    }
+
+    override fun keyPressed(key: KeyEvent): Boolean {
+        if (super.keyPressed(key)) return true
+        if (minecraft.options.keyInventory.matches(key)) {
+            onClose()
+            return true
+        }
+        val menu = backingMenu ?: return false
+        val slot = backingSlotAt(lastMouseX, lastMouseY) ?: return false
+        if (slot !in menu.slots.indices || !menu.carried.isEmpty) return false
+        val options = minecraft.options
+        when {
+            options.keySwapOffhand.matches(key) -> {
+                sendBackingInput(slot, 40, ContainerInput.SWAP)
+                return true
+            }
+
+            options.keyDrop.matches(key) && menu.getSlot(slot).hasItem() -> {
+                sendBackingInput(slot, if (key.hasControlDown()) 1 else 0, ContainerInput.THROW)
+                return true
+            }
+
+            options.keyPickItem.matches(key) && minecraft.player?.hasInfiniteMaterials() == true -> {
+                sendBackingInput(slot, 0, ContainerInput.CLONE)
+                return true
+            }
+        }
+        options.keyHotbarSlots.forEachIndexed { hotbarSlot, mapping ->
+            if (mapping.matches(key)) {
+                sendBackingInput(slot, hotbarSlot, ContainerInput.SWAP)
+                return true
+            }
+        }
+        return false
     }
 
     private fun updateScrollFromMouse(mouseY: Int, top: Int, bottom: Int) {
@@ -727,7 +802,54 @@ class EnderChestScreen(
             quickCraftSlots.clear()
             return
         }
+        if (click.hasShiftDown()) {
+            menu.getSlot(slot).item.takeUnless(ItemStack::isEmpty)?.let {
+                lastQuickMoved = it.copy()
+            }
+        }
         clickBackingSlot(slot, click.button(), click.hasShiftDown())
+    }
+
+    private fun collectMatchingStacks(slot: Int, quickMove: Boolean) {
+        val menu = backingMenu ?: return
+        val player = minecraft.player ?: return
+        if (slot !in menu.slots.indices) return
+        val clickedSlot = menu.getSlot(slot)
+        if (!menu.canTakeItemForPickAll(ItemStack.EMPTY, clickedSlot)) return
+        if (!quickMove) {
+            sendBackingInput(slot, 0, ContainerInput.PICKUP_ALL)
+            return
+        }
+        if (lastQuickMoved.isEmpty) return
+        menu.slots
+            .filter {
+                it.container === clickedSlot.container &&
+                    it.mayPickup(player) &&
+                    it.hasItem() &&
+                    AbstractContainerMenu.canItemQuickReplace(it, lastQuickMoved, true)
+            }
+            .forEach { sendBackingInput(it.index, 0, ContainerInput.QUICK_MOVE) }
+    }
+
+    private fun handleBoundMouseAction(slot: Int?, click: MouseButtonEvent): Boolean {
+        val menu = backingMenu ?: return false
+        val player = minecraft.player ?: return false
+        if (slot == null || slot !in menu.slots.indices || !menu.carried.isEmpty) return false
+        val options = minecraft.options
+        when {
+            options.keyPickItem.matchesMouse(click) && player.hasInfiniteMaterials() ->
+                sendBackingInput(slot, click.button(), ContainerInput.CLONE)
+
+            options.keySwapOffhand.matchesMouse(click) ->
+                sendBackingInput(slot, 40, ContainerInput.SWAP)
+
+            else -> {
+                val hotbarSlot = options.keyHotbarSlots.indexOfFirst { it.matchesMouse(click) }
+                if (hotbarSlot < 0) return false
+                sendBackingInput(slot, hotbarSlot, ContainerInput.SWAP)
+            }
+        }
+        return true
     }
 
     private fun shouldAddSlotToQuickCraft(slot: Int): Boolean {
@@ -772,6 +894,16 @@ class EnderChestScreen(
     private fun clearQuickCrafting() {
         quickCraftingButton = null
         quickCraftSlots.clear()
+    }
+
+    private fun backingMenuCarried(): ItemStack = backingMenu?.carried ?: ItemStack.EMPTY
+
+    private fun clickedOutsidePanels(mouseX: Int, mouseY: Int): Boolean {
+        val inStoragePanel = mouseX in panelX() until (panelX() + panelWidth()) &&
+            mouseY in panelY() until (inventoryTop() + 1)
+        val inInventoryPanel = mouseX in inventoryPanelX() until (inventoryPanelX() + inventoryPanelWidth()) &&
+            mouseY in inventoryTop() until (inventoryTop() + inventoryHeight)
+        return !inStoragePanel && !inInventoryPanel
     }
 
     private fun backingSlotAt(mouseX: Int, mouseY: Int): Int? {
@@ -867,6 +999,7 @@ class EnderChestScreen(
 
     override fun onClose() {
         clearQuickCrafting()
+        doubleClickSlot = null
         closed()
         backingMenu = null
         minecraft.player?.closeContainer()
