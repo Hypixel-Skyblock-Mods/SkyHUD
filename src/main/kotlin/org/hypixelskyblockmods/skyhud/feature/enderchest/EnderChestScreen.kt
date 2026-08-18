@@ -48,6 +48,7 @@ class EnderChestScreen(
     private var currentPage: StoragePageKey? = null
     private var backingMenu: ChestMenu? = null
     private var riftContext = false
+    private var searchBox: EditBox? = null
     private var searchText = ""
     private var scroll = initialScroll.coerceAtLeast(0.0)
     private var maxScroll = 0.0
@@ -160,6 +161,7 @@ class EnderChestScreen(
             searchText = it
             scroll = 0.0
         }
+        searchBox = search
         addRenderableWidget(search)
     }
 
@@ -726,6 +728,7 @@ class EnderChestScreen(
 
     override fun keyPressed(key: KeyEvent): Boolean {
         if (super.keyPressed(key)) return true
+        if (searchBox?.isFocused == true) return true
         if (minecraft.options.keyInventory.matches(key)) {
             onClose()
             return true

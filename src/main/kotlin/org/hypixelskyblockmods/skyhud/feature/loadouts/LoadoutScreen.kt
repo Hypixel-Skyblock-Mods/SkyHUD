@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
+import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.PlayerSkinRenderCache
 import net.minecraft.network.chat.Component
@@ -39,6 +40,7 @@ class LoadoutScreen(
     private var currentPage = 1
     private var totalPages = 1
     private var backingMenu: ChestMenu? = null
+    private var searchBox: EditBox? = null
     private var searchText = ""
     private var scroll = 0.0
     private var maxScroll = 0.0
@@ -100,7 +102,13 @@ class LoadoutScreen(
             searchText = it
             scroll = 0.0
         }
+        searchBox = search
         addRenderableWidget(search)
+    }
+
+    override fun keyPressed(key: KeyEvent): Boolean {
+        if (super.keyPressed(key)) return true
+        return searchBox?.isFocused == true
     }
 
     override fun extractBackground(
