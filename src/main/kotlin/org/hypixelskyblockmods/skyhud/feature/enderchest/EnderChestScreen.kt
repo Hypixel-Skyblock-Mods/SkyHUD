@@ -14,6 +14,7 @@ import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudControls
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
+import org.hypixelskyblockmods.skyhud.gui.VanillaSlotRenderer
 
 class EnderChestScreen(
     initialScroll: Double,
@@ -47,6 +48,7 @@ class EnderChestScreen(
 
     private var currentPage: StoragePageKey? = null
     private var backingMenu: ChestMenu? = null
+    private val slotRenderer = VanillaSlotRenderer(title)
     private var riftContext = false
     private var searchBox: EditBox? = null
     private var searchText = ""
@@ -90,6 +92,7 @@ class EnderChestScreen(
         lastClickedSlot = null
         lastQuickMoved = ItemStack.EMPTY
         backingMenu = target.menu
+        slotRenderer.bind(target.menu)
         currentPage = when (target) {
             is EnderChestTarget.Overview -> {
                 riftContext = false
@@ -433,20 +436,11 @@ class EnderChestScreen(
             val slotY = gridY + (index / 9) * slotPitch
             val slotHovered = mouseInPageViewport(mouseX, mouseY) &&
                 mouseX in slotX until (slotX + slotSize) && mouseY in slotY until (slotY + slotSize)
-            graphics.fill(
-                slotX,
-                slotY,
-                slotX + slotSize - 1,
-                slotY + slotSize - 1,
-                when {
-                    slotHovered -> SkyHudTheme.SLOT_HOVER
-                    stack.isEmpty -> SkyHudTheme.SLOT
-                    else -> SkyHudTheme.SLOT_FILLED
-                },
+            slotRenderer.draw(
+                graphics, stack, slotX + 2, slotY + 2, slotHovered, mouseX, mouseY,
+                if (key == currentPage) index + 9 else null,
             )
             if (!stack.isEmpty) {
-                graphics.item(stack, slotX + 2, slotY + 2)
-                graphics.itemDecorations(font, stack, slotX + 2, slotY + 2)
                 if (searchText.isNotBlank() && itemMatches(stack)) {
                     drawOutline(graphics, slotX, slotY, slotSize - 1, slotSize - 1, SkyHudTheme.PRIMARY_HOVER, 1)
                 }
@@ -518,21 +512,9 @@ class EnderChestScreen(
     ) {
         val stack = menu.getSlot(menuSlot).item
         val hovered = mouseX in x until (x + inventorySlotSize) && mouseY in y until (y + inventorySlotSize)
-        graphics.fill(
-            x,
-            y,
-            x + inventorySlotSize,
-            y + inventorySlotSize,
-            when {
-                hovered -> SkyHudTheme.SLOT_HOVER
-                stack.isEmpty -> SkyHudTheme.SLOT
-                else -> SkyHudTheme.SLOT_FILLED
-            },
-        )
+        val itemInset = (inventorySlotSize - 16) / 2
+        slotRenderer.draw(graphics, stack, x + itemInset, y + itemInset, hovered, mouseX, mouseY, menuSlot)
         if (!stack.isEmpty) {
-            val itemInset = (inventorySlotSize - 16) / 2
-            graphics.item(stack, x + itemInset, y + itemInset)
-            graphics.itemDecorations(font, stack, x + itemInset, y + itemInset)
             if (hovered) graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
         }
     }

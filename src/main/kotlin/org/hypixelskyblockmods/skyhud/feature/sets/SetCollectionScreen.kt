@@ -21,6 +21,7 @@ import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudControls
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
+import org.hypixelskyblockmods.skyhud.gui.VanillaSlotRenderer
 
 class SetCollectionScreen(
     screenName: String,
@@ -51,6 +52,7 @@ class SetCollectionScreen(
     private var currentPage = 1
     private var totalPages = 1
     private var backingMenu: ChestMenu? = null
+    private val slotRenderer = VanillaSlotRenderer(title)
     private var searchBox: EditBox? = null
     private var searchText = ""
     private var scroll = 0.0
@@ -83,6 +85,7 @@ class SetCollectionScreen(
         currentPage = target.page
         totalPages = target.totalPages
         backingMenu = target.menu
+        slotRenderer.bind(target.menu)
         repository.remember(target.page, target.menu)
     }
 
@@ -320,7 +323,10 @@ class SetCollectionScreen(
             }
             set.items.forEachIndexed { index, stack ->
                 val slotY = gridY + index * (slotSize + 4)
-                drawItemSlot(graphics, stack, gridX, slotY, mouseX, mouseY)
+                drawItemSlot(
+                    graphics, stack, gridX, slotY, mouseX, mouseY,
+                    if (card.page == currentPage) index * 9 + card.index else null,
+                )
                 addSetItemBounds(card, index, gridX, slotY, itemBounds)
             }
             if (empty) drawCenteredLabel(graphics, "EMPTY", x, cardY, gridX - x)
@@ -330,7 +336,10 @@ class SetCollectionScreen(
             val gridY = cardY + (cardHeight - gridHeight) / 2
             set.items.forEachIndexed { index, stack ->
                 val slotY = gridY + index * (slotSize + 4)
-                drawItemSlot(graphics, stack, gridX, slotY, mouseX, mouseY)
+                drawItemSlot(
+                    graphics, stack, gridX, slotY, mouseX, mouseY,
+                    if (card.page == currentPage) index * 9 + card.index else null,
+                )
                 addSetItemBounds(card, index, gridX, slotY, itemBounds)
             }
         }
@@ -385,23 +394,12 @@ class SetCollectionScreen(
         y: Int,
         mouseX: Int,
         mouseY: Int,
+        backingSlotIndex: Int?,
     ) {
         val hovered = mouseInContentViewport(mouseX, mouseY) &&
             mouseX in x until (x + slotSize) && mouseY in y until (y + slotSize)
-        graphics.fill(
-            x,
-            y,
-            x + slotSize,
-            y + slotSize,
-            when {
-                hovered -> SkyHudTheme.SLOT_HOVER
-                stack.isEmpty -> SkyHudTheme.SLOT
-                else -> SkyHudTheme.SLOT_FILLED
-            },
-        )
+        slotRenderer.draw(graphics, stack, x + 2, y + 2, hovered, mouseX, mouseY, backingSlotIndex)
         if (stack.isEmpty) return
-        graphics.item(stack, x + 2, y + 2)
-        graphics.itemDecorations(font, stack, x + 2, y + 2)
         if (hovered) graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
     }
 
@@ -448,21 +446,9 @@ class SetCollectionScreen(
     ) {
         val stack = menu.getSlot(menuSlot).item
         val hovered = mouseX in x until (x + inventorySlotSize) && mouseY in y until (y + inventorySlotSize)
-        graphics.fill(
-            x,
-            y,
-            x + inventorySlotSize,
-            y + inventorySlotSize,
-            when {
-                hovered -> SkyHudTheme.SLOT_HOVER
-                stack.isEmpty -> SkyHudTheme.SLOT
-                else -> SkyHudTheme.SLOT_FILLED
-            },
-        )
-        if (stack.isEmpty) return
         val inset = (inventorySlotSize - 16) / 2
-        graphics.item(stack, x + inset, y + inset)
-        graphics.itemDecorations(font, stack, x + inset, y + inset)
+        slotRenderer.draw(graphics, stack, x + inset, y + inset, hovered, mouseX, mouseY, menuSlot)
+        if (stack.isEmpty) return
         if (hovered) graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
     }
 

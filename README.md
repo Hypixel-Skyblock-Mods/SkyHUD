@@ -79,6 +79,15 @@ to install SkyblockAPI or Hypixel Mod API separately.
 
 ## Settings
 
+Storage, Loadouts, Wardrobe, and Equipment Sets keep SkyHUD's layouts while
+drawing items through vanilla's container-slot renderer, with vanilla slot
+textures and hover highlights. Live slots retain their server identities;
+cached items use read-only preview slots. Resource packs can style the slots,
+and mods that hook vanilla slot rendering can add their normal item visuals.
+For example, [Skyblocker](https://github.com/SkyblockerMod/Skyblocker)'s enabled
+rarity backgrounds use its own style, opacity, and color settings. Enable
+**Item Rarity Backgrounds** in Skyblocker to use them; Skyblocker is optional.
+
 Run `/skyhud` or use Mod Menu's Config button. Ender Chest, Loadouts, Wardrobe,
 and Equipment Sets can be enabled independently, and settings are stored in
 `config/skyhud.json`. The Dashboard opens by default and shows the installed

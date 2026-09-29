@@ -20,6 +20,7 @@ import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudControls
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
+import org.hypixelskyblockmods.skyhud.gui.VanillaSlotRenderer
 
 class LoadoutScreen(
     private val requestAction: (page: Int, inventorySlot: Int?, action: LoadoutClickAction) -> Unit,
@@ -40,6 +41,7 @@ class LoadoutScreen(
     private var currentPage = 1
     private var totalPages = 1
     private var backingMenu: ChestMenu? = null
+    private val slotRenderer = VanillaSlotRenderer(title)
     private var searchBox: EditBox? = null
     private var searchText = ""
     private var scroll = 0.0
@@ -66,6 +68,7 @@ class LoadoutScreen(
         currentPage = target.page
         totalPages = target.totalPages
         backingMenu = target.menu
+        slotRenderer.bind(target.menu)
         LoadoutRepository.remember(target.page, target.menu)
     }
 
@@ -356,20 +359,8 @@ class LoadoutScreen(
     ) {
         val hovered = mouseInContentViewport(mouseX, mouseY) &&
             mouseX in x until (x + slotSize) && mouseY in y until (y + slotSize)
-        graphics.fill(
-            x,
-            y,
-            x + slotSize,
-            y + slotSize,
-            when {
-                hovered -> SkyHudTheme.SLOT_HOVER
-                stack.isEmpty -> SkyHudTheme.SLOT
-                else -> SkyHudTheme.SLOT_FILLED
-            },
-        )
+        slotRenderer.draw(graphics, stack, x + 2, y + 2, hovered, mouseX, mouseY)
         if (stack.isEmpty) return
-        graphics.item(stack, x + 2, y + 2)
-        graphics.itemDecorations(font, stack, x + 2, y + 2)
         if (hovered) {
             if (tooltipOverride != null) {
                 graphics.setTooltipForNextFrame(Component.literal(tooltipOverride), mouseX, mouseY)
