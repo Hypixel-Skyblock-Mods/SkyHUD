@@ -26,31 +26,33 @@ object ItemStackSerialization {
         return { stack -> encode(stack, ops) }
     }
 
-    private fun encode(stack: ItemStack, ops: RegistryOps<Tag>): String = runCatching {
+    internal fun encode(stack: ItemStack, ops: RegistryOps<Tag>): String {
         if (stack.isEmpty) return ""
-        val tag = ItemStack.CODEC.encodeStart(ops, stack)
-            .resultOrPartial { error -> logger.warn("Could not encode item: $error") }
-            .orElse(null) as? CompoundTag ?: return ""
+        // Vanilla's persistent codec limits counts to 99; Hypixel can exceed that.
+        val tag = ItemStack.CODEC.encodeStart(ops, stack.copyWithCount(1))
+            .getOrThrow { error -> IllegalStateException("Could not encode ${stack.item}: $error") } as CompoundTag
         val root = CompoundTag()
         root.put("stack", tag)
-        ByteArrayOutputStream().use { output ->
+        root.putInt("count", stack.count)
+        return ByteArrayOutputStream().use { output ->
             NbtIo.writeCompressed(root, output)
             Base64.getEncoder().encodeToString(output.toByteArray())
         }
-    }.getOrElse {
-        logger.warn("Could not encode item stack", it)
-        ""
     }
 
-    fun decode(encoded: String): ItemStack {
+    fun decode(encoded: String): ItemStack = decode(encoded, registryOps())
+
+    internal fun decode(encoded: String, ops: RegistryOps<Tag>): ItemStack {
         if (encoded.isBlank()) return ItemStack.EMPTY
         return runCatching {
             val bytes = Base64.getDecoder().decode(encoded)
             val root = NbtIo.readCompressed(ByteArrayInputStream(bytes), NbtAccounter.create(maxItemBytes))
             val tag = root.getCompound("stack").orElse(null) ?: return ItemStack.EMPTY
-            ItemStack.CODEC.parse(registryOps(), tag)
+            val stack = ItemStack.CODEC.parse(ops, tag)
                 .resultOrPartial { error -> logger.warn("Could not decode item: $error") }
                 .orElse(ItemStack.EMPTY)
+            root.getInt("count").orElse(null)?.takeIf { it > 0 }?.let { stack.count = it }
+            stack
         }.getOrElse {
             logger.warn("Could not decode item stack", it)
             ItemStack.EMPTY

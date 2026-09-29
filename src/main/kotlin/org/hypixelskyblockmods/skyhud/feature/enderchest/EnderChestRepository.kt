@@ -426,9 +426,7 @@ internal fun preferredStoragePage(
     api: CachedEnderChestPage?,
 ): CachedEnderChestPage? = when {
     observed == null -> api
-    api == null -> observed
-    observed.items.none { !it.isEmpty } && api.items.any { !it.isEmpty } -> api
-    api.items.none { !it.isEmpty } && observed.items.any { !it.isEmpty } -> observed
-    (observed.updatedAtEpochMillis ?: Long.MIN_VALUE) >= (api.updatedAtEpochMillis ?: Long.MIN_VALUE) -> observed
-    else -> api
+    // API timestamps include fetch time, not when the server's inventory actually changed.
+    // Once visited, the server-backed menu is authoritative, including its empty slots.
+    else -> observed
 }
