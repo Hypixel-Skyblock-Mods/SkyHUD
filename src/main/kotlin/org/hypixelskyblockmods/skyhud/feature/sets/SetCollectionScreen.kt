@@ -18,6 +18,7 @@ import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
+import org.hypixelskyblockmods.skyhud.gui.ArmorPreview
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudControls
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
@@ -468,10 +469,10 @@ class SetCollectionScreen(
                 .also { it.id = -200_000 - set.id }
         }
         armorSlots.forEachIndexed { index, slot ->
-            mannequin.setItemSlot(slot, set.items.getOrNull(index) ?: ItemStack.EMPTY)
+            mannequin.setItemSlot(slot, ArmorPreview.equipment(set.items.getOrNull(index) ?: ItemStack.EMPTY, slot))
         }
         mannequin.tickCount = minecraft.player?.tickCount ?: 0
-        val scale = ((right - left) * 0.66).toInt().coerceIn(30, 46)
+        val scale = ArmorPreview.scale(right - left, bottom - top, 46)
         graphics.enableScissor(left, top, right, bottom)
         val rendered = try {
             InventoryScreen.extractEntityInInventoryFollowsMouse(
@@ -482,8 +483,8 @@ class SetCollectionScreen(
                 bottom,
                 scale,
                 0f,
-                mouseX.toFloat(),
-                mouseY.toFloat(),
+                mouseX.coerceIn(left - 40, right + 40).toFloat(),
+                mouseY.coerceIn(top - 40, bottom + 40).toFloat(),
                 mannequin,
             )
             true

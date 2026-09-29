@@ -11,6 +11,7 @@ import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import net.minecraft.world.item.ItemStack
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
+import org.hypixelskyblockmods.skyhud.gui.QuickCraftPreview
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudControls
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
@@ -62,6 +63,7 @@ class EnderChestScreen(
     private var highlightUntilEpochMillis = 0L
     private var quickCraftingButton: Int? = null
     private val quickCraftSlots = linkedSetOf<Int>()
+    private var quickCraftPreview: QuickCraftPreview? = null
     private var doubleClickSlot: Int? = null
     private var lastClickedSlot: Int? = null
     private var lastQuickMoved = ItemStack.EMPTY
@@ -191,6 +193,17 @@ class EnderChestScreen(
     ) {
         lastMouseX = mouseX
         lastMouseY = mouseY
+        quickCraftPreview = backingMenu?.let { menu ->
+            quickCraftingButton?.let { button ->
+                val slots = quickCraftSlots.mapNotNull { index ->
+                    menu.slots.getOrNull(index)?.takeIf {
+                        AbstractContainerMenu.canItemQuickReplace(it, menu.carried, true) &&
+                            it.mayPlace(menu.carried) && menu.canDragTo(it)
+                    }
+                }
+                QuickCraftPreview.create(menu.carried, slots, button)
+            }
+        }
         val panelX = panelX()
         val panelY = panelY()
         val panelWidth = panelWidth()
@@ -256,7 +269,7 @@ class EnderChestScreen(
         drawInventory(graphics, mouseX, mouseY, inventoryPanelX, inventoryTop)
         super.extractRenderState(graphics, mouseX, mouseY, delta)
 
-        val carried = backingMenu?.carried
+        val carried = quickCraftPreview?.carried ?: backingMenu?.carried
         if (carried != null && !carried.isEmpty) {
             graphics.item(carried, mouseX - 8, mouseY - 8)
             graphics.itemDecorations(font, carried, mouseX - 8, mouseY - 8)
@@ -431,7 +444,8 @@ class EnderChestScreen(
         }
 
         repeat(rows * 9) { index ->
-            val stack = cached?.items?.getOrNull(index) ?: ItemStack.EMPTY
+            val stack = (if (active) quickCraftPreview?.slots?.get(index + 9) else null)
+                ?: cached?.items?.getOrNull(index) ?: ItemStack.EMPTY
             val slotX = x + (index % 9) * slotPitch
             val slotY = gridY + (index / 9) * slotPitch
             val slotHovered = mouseInPageViewport(mouseX, mouseY) &&
@@ -510,7 +524,7 @@ class EnderChestScreen(
         mouseX: Int,
         mouseY: Int,
     ) {
-        val stack = menu.getSlot(menuSlot).item
+        val stack = quickCraftPreview?.slots?.get(menuSlot) ?: menu.getSlot(menuSlot).item
         val hovered = mouseX in x until (x + inventorySlotSize) && mouseY in y until (y + inventorySlotSize)
         val itemInset = (inventorySlotSize - 16) / 2
         slotRenderer.draw(graphics, stack, x + itemInset, y + itemInset, hovered, mouseX, mouseY, menuSlot)
@@ -879,6 +893,7 @@ class EnderChestScreen(
     private fun clearQuickCrafting() {
         quickCraftingButton = null
         quickCraftSlots.clear()
+        quickCraftPreview = null
     }
 
     private fun backingMenuCarried(): ItemStack = backingMenu?.carried ?: ItemStack.EMPTY
