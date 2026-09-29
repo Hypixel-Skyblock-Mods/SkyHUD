@@ -184,7 +184,6 @@ object EnderChestController {
 
     private fun onOverlayClosed() {
         rememberOverlayPosition()
-        EnderChestRepository.flush()
         OverlayTransitionGuard.clear(activeScreen)
         activeScreen = null
         EnderChestRepository.clearLiveBacking()

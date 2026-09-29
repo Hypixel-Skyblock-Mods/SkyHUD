@@ -18,6 +18,7 @@ import org.hypixelskyblockmods.skyhud.feature.wardrobe.WardrobeRepository
 import org.hypixelskyblockmods.skyhud.feature.equipment.EquipmentRepository
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.integration.skyblockapi.SkyblockApiIntegration
+import org.hypixelskyblockmods.skyhud.profile.SkyHudProfileStore
 import org.slf4j.LoggerFactory
 
 object SkyHudClient : ClientModInitializer {
@@ -51,6 +52,7 @@ object SkyHudClient : ClientModInitializer {
             LoadoutRepository.flush()
             WardrobeRepository.sets.flush()
             EquipmentRepository.sets.flush()
+            SkyHudProfileStore.awaitPendingWrites()
             SkyHudBackdrop.close()
         }
         logger.info("SkyHUD initialized")

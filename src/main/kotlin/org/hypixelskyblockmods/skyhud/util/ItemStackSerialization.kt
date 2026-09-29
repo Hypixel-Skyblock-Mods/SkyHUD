@@ -18,9 +18,17 @@ object ItemStackSerialization {
     private val logger = LoggerFactory.getLogger("SkyHUD Item Serialization")
     private const val maxItemBytes = 1_000_000L
 
-    fun encode(stack: ItemStack): String = runCatching {
+    fun encode(stack: ItemStack): String = encode(stack.copy(), registryOps())
+
+    /** Capture registry access on the client thread before encoding detached snapshots on a worker. */
+    fun encoder(): (ItemStack) -> String {
+        val ops = registryOps()
+        return { stack -> encode(stack, ops) }
+    }
+
+    private fun encode(stack: ItemStack, ops: RegistryOps<Tag>): String = runCatching {
         if (stack.isEmpty) return ""
-        val tag = ItemStack.CODEC.encodeStart(registryOps(), stack.copy())
+        val tag = ItemStack.CODEC.encodeStart(ops, stack)
             .resultOrPartial { error -> logger.warn("Could not encode item: $error") }
             .orElse(null) as? CompoundTag ?: return ""
         val root = CompoundTag()

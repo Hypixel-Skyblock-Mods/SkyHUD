@@ -155,7 +155,6 @@ object LoadoutRepository {
     private var loadedProfile: ProfileKey? = null
     private var profileStateInitialized = false
     private var activeIdentity: SkyBlockProfileIdentity? = null
-    private var lastSavedJson: String? = null
     private var saveAfterEpochMillis: Long? = null
 
     fun remember(page: Int, menu: ChestMenu) {
@@ -326,7 +325,6 @@ object LoadoutRepository {
         loadedProfile = null
         profileStateInitialized = false
         activeIdentity = null
-        lastSavedJson = null
         saveAfterEpochMillis = null
     }
 
@@ -342,7 +340,6 @@ object LoadoutRepository {
         loadedProfile = ProfileKey(profile.accountUuid, profile.profileName)
         profileStateInitialized = true
         activeIdentity = profile
-        lastSavedJson = null
         saveAfterEpochMillis = null
         SkyHudProfileStore.clear("loadouts", profile)
     }
@@ -364,10 +361,8 @@ object LoadoutRepository {
         profileStateInitialized = true
         activeIdentity = identity
         pages.clear()
-        lastSavedJson = null
         saveAfterEpochMillis = null
-        lastSavedJson = identity?.let { SkyHudProfileStore.read("loadouts", it) }
-        lastSavedJson?.let { json ->
+        identity?.let { SkyHudProfileStore.read("loadouts", it) }?.let { json ->
             runCatching {
                 val saved = gson.fromJson(json, SavedLoadoutCache::class.java)
                 saved.loadouts.groupBy(SavedLoadout::page).forEach { (page, loadouts) ->
@@ -414,39 +409,53 @@ object LoadoutRepository {
     }
 
     private fun saveNow() {
-        saveAfterEpochMillis = null
+        if (saveAfterEpochMillis == null) return
         val profile = activeIdentity ?: return
-        val saved = SavedLoadoutCache(
-            loadouts = pages.values.flatMap(CachedLoadoutPage::loadouts).map { loadout ->
-                SavedLoadout(
-                    id = loadout.id,
-                    page = loadout.page,
-                    inventorySlot = loadout.inventorySlot,
-                    name = loadout.name,
-                    selector = ItemStackSerialization.encode(loadout.selector),
-                    armor = encodeIndexed(loadout.armor),
-                    equipment = encodeIndexed(loadout.equipment),
-                    pet = encodePresent(loadout.pet),
-                    hotm = encodePresent(loadout.hotm),
-                    hotf = encodePresent(loadout.hotf),
-                    powerStone = encodePresent(loadout.powerStone),
-                    tunings = encodePresent(loadout.tunings),
-                    selected = loadout.selected,
-                    locked = loadout.locked,
-                    empty = loadout.empty,
-                    renameButton = loadout.renameAction.button,
-                    renameInput = loadout.renameAction.input.name,
-                    updatedAtEpochMillis = loadout.updatedAtEpochMillis,
-                )
-            }.toMutableList(),
-        )
-        val json = gson.toJson(saved)
-        if (json == lastSavedJson) return
-        if (SkyHudProfileStore.write("loadouts", profile, json)) lastSavedJson = json
+        saveAfterEpochMillis = null
+        val snapshot = pages.values.flatMap(CachedLoadoutPage::loadouts).map { loadout ->
+            loadout.copy(
+                selector = loadout.selector.copy(),
+                armor = loadout.armor.map(ItemStack::copy),
+                equipment = loadout.equipment.map(ItemStack::copy),
+                pet = loadout.pet.copy(),
+                hotm = loadout.hotm.copy(),
+                hotf = loadout.hotf.copy(),
+                powerStone = loadout.powerStone.copy(),
+                tunings = loadout.tunings.copy(),
+            )
+        }
+        val encode = ItemStackSerialization.encoder()
+        SkyHudProfileStore.writeAsync("loadouts", profile) {
+            val saved = SavedLoadoutCache(
+                loadouts = snapshot.map { loadout ->
+                    SavedLoadout(
+                        id = loadout.id,
+                        page = loadout.page,
+                        inventorySlot = loadout.inventorySlot,
+                        name = loadout.name,
+                        selector = encode(loadout.selector),
+                        armor = encodeIndexed(loadout.armor, encode),
+                        equipment = encodeIndexed(loadout.equipment, encode),
+                        pet = encodePresent(loadout.pet, encode),
+                        hotm = encodePresent(loadout.hotm, encode),
+                        hotf = encodePresent(loadout.hotf, encode),
+                        powerStone = encodePresent(loadout.powerStone, encode),
+                        tunings = encodePresent(loadout.tunings, encode),
+                        selected = loadout.selected,
+                        locked = loadout.locked,
+                        empty = loadout.empty,
+                        renameButton = loadout.renameAction.button,
+                        renameInput = loadout.renameAction.input.name,
+                        updatedAtEpochMillis = loadout.updatedAtEpochMillis,
+                    )
+                }.toMutableList(),
+            )
+            gson.toJson(saved)
+        }
     }
 
-    private fun encodeIndexed(stacks: List<ItemStack>): MutableList<SavedIndexedItem> = stacks.mapIndexedNotNull { index, stack ->
-        encodePresent(stack)?.let { SavedIndexedItem(index, it) }
+    private fun encodeIndexed(stacks: List<ItemStack>, encode: (ItemStack) -> String): MutableList<SavedIndexedItem> = stacks.mapIndexedNotNull { index, stack ->
+        encodePresent(stack, encode)?.let { SavedIndexedItem(index, it) }
     }.toMutableList()
 
     private fun decodeIndexed(items: List<SavedIndexedItem>, size: Int): List<ItemStack> =
@@ -454,8 +463,8 @@ object LoadoutRepository {
             items.forEach { item -> if (item.index in result.indices) result[item.index] = ItemStackSerialization.decode(item.stack) }
         }
 
-    private fun encodePresent(stack: ItemStack): String? =
-        stack.takeUnless(ItemStack::isEmpty)?.let(ItemStackSerialization::encode)?.takeIf(String::isNotBlank)
+    private fun encodePresent(stack: ItemStack, encode: (ItemStack) -> String): String? =
+        stack.takeUnless(ItemStack::isEmpty)?.let(encode)?.takeIf(String::isNotBlank)
 
     private fun pageMatches(previous: CachedLoadoutPage?, current: CachedLoadoutPage): Boolean {
         if (previous == null || previous.loadouts.size != current.loadouts.size) return false

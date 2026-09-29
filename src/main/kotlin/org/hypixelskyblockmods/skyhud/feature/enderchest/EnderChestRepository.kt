@@ -112,7 +112,6 @@ object EnderChestRepository {
     private var apiPages = emptyMap<StoragePageKey, CachedEnderChestPage>()
     private var loadedProfile: StorageProfileKey? = null
     private var activeIdentity: SkyBlockProfileIdentity? = null
-    private var lastSavedJson: String? = null
     private var saveAfterEpochMillis: Long? = null
     private var livePageKey: StoragePageKey? = null
     private var liveMenu: ChestMenu? = null
@@ -238,7 +237,6 @@ object EnderChestRepository {
         liveMenu = null
         activeIdentity = null
         loadedProfile = null
-        lastSavedJson = null
         saveAfterEpochMillis = null
     }
 
@@ -258,7 +256,6 @@ object EnderChestRepository {
         observedPages.clear()
         loadedProfile = profile.toStorageKey()
         activeIdentity = profile
-        lastSavedJson = null
         saveAfterEpochMillis = null
         SkyHudProfileStore.clear("storage-pages", profile)
     }
@@ -279,7 +276,6 @@ object EnderChestRepository {
             livePageKey = null
             liveMenu = null
             loadedProfile = profile
-            lastSavedJson = null
             saveAfterEpochMillis = null
             if (identity != null) {
                 val saved = StoragePageCatalog.snapshot(identity)
@@ -321,15 +317,23 @@ object EnderChestRepository {
         val key = livePageKey ?: return
         val menu = liveMenu ?: return
         val now = System.currentTimeMillis()
-        val observed = livePage(key, menu).copy(
+        val previous = observedPages[key]
+        val itemCount = (menu.rowCount - 1) * 9
+        if (
+            previous != null && previous.items.any { !it.isEmpty } &&
+            (0 until itemCount).all { menu.getSlot(it + 9).item.isEmpty }
+        ) return
+        val refreshTimestamp = previous?.updatedAtEpochMillis?.let { now - it >= TIMESTAMP_REFRESH_MILLIS } != false
+        // Compare live references first; unchanged ticks and menu closes need no stack copies.
+        if (
+            previous != null && !refreshTimestamp && previous.rows == menu.rowCount - 1 &&
+            previous.items.size == itemCount &&
+            previous.items.indices.all { ItemStack.matches(previous.items[it], menu.getSlot(it + 9).item) }
+        ) return
+        observedPages[key] = livePage(key, menu).copy(
             updatedAtEpochMillis = now,
             origin = StoragePageOrigin.SKYHUD_PROFILE,
         )
-        val previous = observedPages[key]
-        if (previous != null && previous.items.any { !it.isEmpty } && observed.items.none { !it.isEmpty }) return
-        val refreshTimestamp = previous?.updatedAtEpochMillis?.let { now - it >= TIMESTAMP_REFRESH_MILLIS } != false
-        if (pagesMatch(previous, observed) && !refreshTimestamp) return
-        observedPages[key] = observed
         if (activeIdentity != null) saveAfterEpochMillis = now + SAVE_DEBOUNCE_MILLIS
     }
 
@@ -353,8 +357,7 @@ object EnderChestRepository {
     }
 
     private fun loadObservedPages(profile: SkyBlockProfileIdentity) {
-        lastSavedJson = SkyHudProfileStore.read("storage-pages", profile)
-        val json = lastSavedJson ?: return
+        val json = SkyHudProfileStore.read("storage-pages", profile) ?: return
         runCatching {
             gson.fromJson(json, SavedStoragePages::class.java).pages.forEach { saved ->
                 val type = runCatching { StoragePageType.valueOf(saved.type) }.getOrNull() ?: return@forEach
@@ -382,30 +385,28 @@ object EnderChestRepository {
     }
 
     private fun saveNow() {
-        saveAfterEpochMillis = null
+        if (saveAfterEpochMillis == null) return
         val profile = activeIdentity ?: return
-        val saved = SavedStoragePages(pages = observedPages.values.map { page ->
-            SavedPage(
-                type = page.key.type.name,
-                number = page.key.number,
-                rows = page.rows,
-                updatedAtEpochMillis = page.updatedAtEpochMillis ?: System.currentTimeMillis(),
-                items = page.items.mapIndexedNotNull { index, stack ->
-                    stack.takeUnless(ItemStack::isEmpty)
-                        ?.let(ItemStackSerialization::encode)
-                        ?.takeIf(String::isNotBlank)
-                        ?.let { SavedItem(index, it) }
-                }.toMutableList(),
-            )
-        }.toMutableList())
-        val json = gson.toJson(saved)
-        if (json == lastSavedJson) return
-        if (SkyHudProfileStore.write("storage-pages", profile, json)) lastSavedJson = json
-    }
-
-    private fun pagesMatch(first: CachedEnderChestPage?, second: CachedEnderChestPage): Boolean {
-        if (first == null || first.rows != second.rows || first.items.size != second.items.size) return false
-        return first.items.zip(second.items).all { (left, right) -> ItemStack.matches(left, right) }
+        saveAfterEpochMillis = null
+        val snapshot = observedPages.values.map { page -> page.copy(items = page.items.map(ItemStack::copy)) }
+        val encode = ItemStackSerialization.encoder()
+        SkyHudProfileStore.writeAsync("storage-pages", profile) {
+            val saved = SavedStoragePages(pages = snapshot.map { page ->
+                SavedPage(
+                    type = page.key.type.name,
+                    number = page.key.number,
+                    rows = page.rows,
+                    updatedAtEpochMillis = page.updatedAtEpochMillis ?: System.currentTimeMillis(),
+                    items = page.items.mapIndexedNotNull { index, stack ->
+                        stack.takeUnless(ItemStack::isEmpty)
+                            ?.let(encode)
+                            ?.takeIf(String::isNotBlank)
+                            ?.let { SavedItem(index, it) }
+                    }.toMutableList(),
+                )
+            }.toMutableList())
+            gson.toJson(saved)
+        }
     }
 
     private fun isAvailableOverviewSlot(key: StoragePageKey, menu: ChestMenu): Boolean {

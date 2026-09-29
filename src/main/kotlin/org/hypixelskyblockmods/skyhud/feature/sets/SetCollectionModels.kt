@@ -73,7 +73,6 @@ class SetCollectionRepository(
     private var loadedProfile: ProfileKey? = null
     private var profileStateInitialized = false
     private var activeIdentity: SkyBlockProfileIdentity? = null
-    private var lastSavedJson: String? = null
     private var saveAfterEpochMillis: Long? = null
 
     fun remember(page: Int, menu: ChestMenu) {
@@ -154,7 +153,6 @@ class SetCollectionRepository(
         loadedProfile = null
         profileStateInitialized = false
         activeIdentity = null
-        lastSavedJson = null
         saveAfterEpochMillis = null
     }
 
@@ -170,7 +168,6 @@ class SetCollectionRepository(
         loadedProfile = ProfileKey(profile.accountUuid, profile.profileName)
         profileStateInitialized = true
         activeIdentity = profile
-        lastSavedJson = null
         saveAfterEpochMillis = null
         SkyHudProfileStore.clear(cacheName, profile)
     }
@@ -192,10 +189,8 @@ class SetCollectionRepository(
         profileStateInitialized = true
         activeIdentity = identity
         pages.clear()
-        lastSavedJson = null
         saveAfterEpochMillis = null
-        lastSavedJson = identity?.let { SkyHudProfileStore.read(cacheName, it) }
-        lastSavedJson?.let { json ->
+        identity?.let { SkyHudProfileStore.read(cacheName, it) }?.let { json ->
             runCatching {
                 val saved = gson.fromJson(json, SavedSetCache::class.java)
                 saved.sets.groupBy(SavedSet::page).forEach { (page, savedSets) ->
@@ -231,31 +226,36 @@ class SetCollectionRepository(
     }
 
     private fun saveNow() {
-        saveAfterEpochMillis = null
+        if (saveAfterEpochMillis == null) return
         val profile = activeIdentity ?: return
-        val saved = SavedSetCache(
-            sets = pages.values.flatMap(CachedSetPage::slots).map { set ->
-                SavedSet(
-                    page = set.page,
-                    index = set.index,
-                    id = set.id,
-                    items = encodeIndexed(set.items),
-                    selector = ItemStackSerialization.encode(set.selector),
-                    selected = set.selected,
-                    locked = set.locked,
-                    selectable = set.selectable,
-                    updatedAtEpochMillis = set.updatedAtEpochMillis,
-                )
-            }.toMutableList(),
-        )
-        val json = gson.toJson(saved)
-        if (json == lastSavedJson) return
-        if (SkyHudProfileStore.write(cacheName, profile, json)) lastSavedJson = json
+        saveAfterEpochMillis = null
+        val snapshot = pages.values.flatMap(CachedSetPage::slots).map { set ->
+            set.copy(items = set.items.map(ItemStack::copy), selector = set.selector.copy())
+        }
+        val encode = ItemStackSerialization.encoder()
+        SkyHudProfileStore.writeAsync(cacheName, profile) {
+            val saved = SavedSetCache(
+                sets = snapshot.map { set ->
+                    SavedSet(
+                        page = set.page,
+                        index = set.index,
+                        id = set.id,
+                        items = encodeIndexed(set.items, encode),
+                        selector = encode(set.selector),
+                        selected = set.selected,
+                        locked = set.locked,
+                        selectable = set.selectable,
+                        updatedAtEpochMillis = set.updatedAtEpochMillis,
+                    )
+                }.toMutableList(),
+            )
+            gson.toJson(saved)
+        }
     }
 
-    private fun encodeIndexed(stacks: List<ItemStack>): MutableList<SavedIndexedItem> = stacks.mapIndexedNotNull { index, stack ->
+    private fun encodeIndexed(stacks: List<ItemStack>, encode: (ItemStack) -> String): MutableList<SavedIndexedItem> = stacks.mapIndexedNotNull { index, stack ->
         stack.takeUnless(ItemStack::isEmpty)
-            ?.let(ItemStackSerialization::encode)
+            ?.let(encode)
             ?.takeIf(String::isNotBlank)
             ?.let { SavedIndexedItem(index, it) }
     }.toMutableList()

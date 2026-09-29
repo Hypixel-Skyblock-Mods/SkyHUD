@@ -62,6 +62,10 @@ inventory menus with clean, modern interfaces.
 Each custom screen has a compact **Edit** action that temporarily opens the
 original Hypixel menu without the overlay replacing it.
 
+Item preview caches save only when changed. Compression and file writes run on
+a background worker, so closing a menu does not serialize the cache on the game
+thread. Pending saves are completed before the client exits.
+
 All interfaces use SkyHUD's dark palette: `#0D0D0D` backgrounds with
 `#1E3A69` accents. Detection is limited to verified Hypixel screen titles,
 container layouts, and action items; unrelated chests are left untouched.
