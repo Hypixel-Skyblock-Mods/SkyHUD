@@ -60,6 +60,20 @@ class VanillaSlotRenderer(private val title: Component) {
                     RenderPipelines.GUI_TEXTURED, CONTAINER_TEXTURE,
                     itemX - 1, itemY - 1, 7f, 17f, 18, 18, 256, 256,
                 )
+                // A resource pack may draw only the outer border of the shared chest
+                // grid. Complete isolated cells with its outer right/bottom edges.
+                graphics.blit(
+                    RenderPipelines.GUI_TEXTURED, CONTAINER_TEXTURE,
+                    itemX + 16, itemY, 168f, 18f, 1, 16, 256, 256,
+                )
+                graphics.blit(
+                    RenderPipelines.GUI_TEXTURED, CONTAINER_TEXTURE,
+                    itemX, itemY + 16, 8f, 124f, 16, 1, 256, 256,
+                )
+                graphics.blit(
+                    RenderPipelines.GUI_TEXTURED, CONTAINER_TEXTURE,
+                    itemX + 16, itemY + 16, 168f, 124f, 1, 1, 256, 256,
+                )
             }
 
             // Keep the real slot's identity and coordinates for vanilla/mod hooks. Cached
