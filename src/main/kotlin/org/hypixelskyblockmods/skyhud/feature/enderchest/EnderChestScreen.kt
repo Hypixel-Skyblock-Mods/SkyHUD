@@ -15,6 +15,7 @@ import org.hypixelskyblockmods.skyhud.gui.QuickCraftPreview
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudControls
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
+import org.hypixelskyblockmods.skyhud.gui.VanillaInventoryPanel
 import org.hypixelskyblockmods.skyhud.gui.VanillaSlotRenderer
 
 class EnderChestScreen(
@@ -73,7 +74,7 @@ class EnderChestScreen(
     private val panelMaxWidth = 574
     private val panelMaxHeight = 430
     private val headerHeight = 24
-    private val inventoryHeight = 132
+    private val inventoryHeight = VanillaInventoryPanel.HEIGHT
     private val pageColumns = 3
     private val pageWidth = 180
     private val pageGapHorizontal = 6
@@ -81,12 +82,12 @@ class EnderChestScreen(
     private val pageTitleHeight = 13
     private val slotSize = 20
     private val slotPitch = 20
-    private val inventorySlotSize = 23
-    private val inventorySlotPitch = 24
+    private val inventorySlotSize = VanillaInventoryPanel.SLOT_SIZE
+    private val inventorySlotPitch = VanillaInventoryPanel.SLOT_SIZE
     private val toolkitButtonSize = 18
     private val toolkitButtonGap = 3
     private val contentEdgeGap = 3
-    private val inventorySidePadding = 6
+    private val inventorySidePadding = VanillaInventoryPanel.SIDE_PADDING
 
     fun bind(target: EnderChestTarget) {
         clearQuickCrafting()
@@ -181,7 +182,6 @@ class EnderChestScreen(
         SkyHudBackdrop.renderPanelBlur(
             graphics,
             SkyHudBackdrop.Region(panelX(), panelY, panelWidth(), inventoryTop - panelY + 1),
-            SkyHudBackdrop.Region(inventoryPanelX(), inventoryTop, inventoryPanelWidth(), inventoryHeight),
         )
     }
 
@@ -211,7 +211,6 @@ class EnderChestScreen(
         val inventoryTop = inventoryTop()
         val storagePanelHeight = inventoryTop - panelY + 1
         val inventoryPanelX = inventoryPanelX()
-        val inventoryPanelWidth = inventoryPanelWidth()
 
         graphics.fill(0, 0, width, height, SkyHudTheme.SCREEN_DIM)
         SkyHudTheme.outlinedRoundedRect(
@@ -255,15 +254,7 @@ class EnderChestScreen(
             drawToolkitButtons(graphics, mouseX, mouseY, panelX, panelY, panelWidth, searchWidth)
         }
 
-        SkyHudTheme.outlinedRoundedRect(
-            graphics,
-            inventoryPanelX,
-            inventoryTop,
-            inventoryPanelWidth,
-            inventoryHeight,
-            SkyHudTheme.PANEL,
-            SkyHudTheme.PRIMARY,
-        )
+        VanillaInventoryPanel.draw(graphics, font, inventoryPanelX, inventoryTop)
 
         drawPages(graphics, mouseX, mouseY, panelX, panelY, panelWidth, inventoryTop)
         drawInventory(graphics, mouseX, mouseY, inventoryPanelX, inventoryTop)
@@ -490,11 +481,9 @@ class EnderChestScreen(
         inventoryPanelX: Int,
         inventoryTop: Int,
     ) {
-        graphics.text(font, "INVENTORY", inventoryPanelX + inventorySidePadding, inventoryTop + 9, SkyHudTheme.TEXT_MUTED, false)
-
         val menu = backingMenu ?: return
         val startX = inventoryPanelX + inventorySidePadding
-        val mainY = inventoryTop + 22
+        val mainY = inventoryTop + VanillaInventoryPanel.MAIN_TOP
         val playerStart = menu.rowCount * 9
         val bounds = ArrayList<InventorySlotBounds>(36)
 
@@ -508,7 +497,7 @@ class EnderChestScreen(
         repeat(9) { index ->
             val menuSlot = playerStart + 27 + index
             val x = startX + index * inventorySlotPitch
-            val y = mainY + 3 * inventorySlotPitch + 5
+            val y = mainY + 3 * inventorySlotPitch + VanillaInventoryPanel.HOTBAR_GAP
             drawInventorySlot(graphics, menu, menuSlot, x, y, mouseX, mouseY)
             bounds += InventorySlotBounds(menuSlot, x, y)
         }
@@ -527,7 +516,10 @@ class EnderChestScreen(
         val stack = quickCraftPreview?.slots?.get(menuSlot) ?: menu.getSlot(menuSlot).item
         val hovered = mouseX in x until (x + inventorySlotSize) && mouseY in y until (y + inventorySlotSize)
         val itemInset = (inventorySlotSize - 16) / 2
-        slotRenderer.draw(graphics, stack, x + itemInset, y + itemInset, hovered, mouseX, mouseY, menuSlot)
+        slotRenderer.draw(
+            graphics, stack, x + itemInset, y + itemInset, hovered, mouseX, mouseY,
+            menuSlot, drawBackground = false,
+        )
         if (!stack.isEmpty) {
             if (hovered) graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
         }
@@ -993,7 +985,7 @@ class EnderChestScreen(
         mouseX in (panelX() + 2) until (panelX() + panelWidth() - 2) &&
             mouseY in (panelY() + headerHeight + contentEdgeGap) until (inventoryTop() - contentEdgeGap)
 
-    private fun inventoryPanelWidth(): Int = 9 * inventorySlotPitch + 2 * inventorySidePadding
+    private fun inventoryPanelWidth(): Int = VanillaInventoryPanel.WIDTH
 
     private fun inventoryPanelX(): Int = (width - inventoryPanelWidth()) / 2
 

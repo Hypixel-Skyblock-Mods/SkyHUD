@@ -30,13 +30,14 @@ class VanillaSlotRenderer(private val title: Component) {
         mouseX: Int,
         mouseY: Int,
         backingSlotIndex: Int? = null,
+        drawBackground: Boolean = true,
     ) {
         val renderer = screen ?: run {
             val menu = backingMenu ?: return
             val inventory = Minecraft.getInstance().player?.inventory ?: return
             SlotScreen(menu, inventory, title).also { screen = it }
         }
-        renderer.draw(graphics, stack, itemX, itemY, hovered, mouseX, mouseY, backingSlotIndex)
+        renderer.draw(graphics, stack, itemX, itemY, hovered, mouseX, mouseY, backingSlotIndex, drawBackground)
     }
 
     private class SlotScreen(menu: ChestMenu, inventory: Inventory, title: Component) :
@@ -52,11 +53,14 @@ class VanillaSlotRenderer(private val title: Component) {
             mouseX: Int,
             mouseY: Int,
             backingSlotIndex: Int?,
+            drawBackground: Boolean,
         ) {
-            graphics.blit(
-                RenderPipelines.GUI_TEXTURED, CONTAINER_TEXTURE,
-                itemX - 1, itemY - 1, 7f, 17f, 18, 18, 256, 256,
-            )
+            if (drawBackground) {
+                graphics.blit(
+                    RenderPipelines.GUI_TEXTURED, CONTAINER_TEXTURE,
+                    itemX - 1, itemY - 1, 7f, 17f, 18, 18, 256, 256,
+                )
+            }
 
             // Keep the real slot's identity and coordinates for vanilla/mod hooks. Cached
             // items use an isolated preview container that never receives input.

@@ -22,6 +22,7 @@ import org.hypixelskyblockmods.skyhud.gui.ArmorPreview
 import org.hypixelskyblockmods.skyhud.gui.SkyHudBackdrop
 import org.hypixelskyblockmods.skyhud.gui.SkyHudControls
 import org.hypixelskyblockmods.skyhud.gui.SkyHudTheme
+import org.hypixelskyblockmods.skyhud.gui.VanillaInventoryPanel
 import org.hypixelskyblockmods.skyhud.gui.VanillaSlotRenderer
 
 class SetCollectionScreen(
@@ -69,16 +70,16 @@ class SetCollectionScreen(
     private val panelMaxWidth = if (renderArmorMannequin) 620 else 500
     private val panelMaxHeight = 430
     private val headerHeight = 24
-    private val inventoryHeight = 132
+    private val inventoryHeight = VanillaInventoryPanel.HEIGHT
     private val columns = if (renderArmorMannequin) 5 else 8
     private val cardGap = 6
     private val rowGap = 9
     private val titleHeight = 13
     private val cardHeight = if (renderArmorMannequin) 126 else 104
     private val slotSize = 20
-    private val inventorySlotSize = 23
-    private val inventorySlotPitch = 24
-    private val inventorySidePadding = 6
+    private val inventorySlotSize = VanillaInventoryPanel.SLOT_SIZE
+    private val inventorySlotPitch = VanillaInventoryPanel.SLOT_SIZE
+    private val inventorySidePadding = VanillaInventoryPanel.SIDE_PADDING
     private val contentEdgeGap = 3
     private val armorSlots = listOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET)
 
@@ -143,7 +144,6 @@ class SetCollectionScreen(
         SkyHudBackdrop.renderPanelBlur(
             graphics,
             SkyHudBackdrop.Region(panelX(), panelY, panelWidth(), inventoryTop - panelY + 1),
-            SkyHudBackdrop.Region(inventoryPanelX(), inventoryTop, inventoryPanelWidth(), inventoryHeight),
         )
     }
 
@@ -159,7 +159,6 @@ class SetCollectionScreen(
         val inventoryTop = inventoryTop()
         val collectionPanelHeight = inventoryTop - panelY + 1
         val inventoryPanelX = inventoryPanelX()
-        val inventoryPanelWidth = inventoryPanelWidth()
         graphics.fill(0, 0, width, height, SkyHudTheme.SCREEN_DIM)
         SkyHudTheme.outlinedRoundedRect(
             graphics,
@@ -172,15 +171,7 @@ class SetCollectionScreen(
         )
         graphics.fill(panelX + 1, panelY + headerHeight, panelX + panelWidth - 1, panelY + headerHeight + 1, SkyHudTheme.DIVIDER)
         drawHeader(graphics, mouseX, mouseY, panelX, panelY, panelWidth)
-        SkyHudTheme.outlinedRoundedRect(
-            graphics,
-            inventoryPanelX,
-            inventoryTop,
-            inventoryPanelWidth,
-            inventoryHeight,
-            SkyHudTheme.PANEL,
-            SkyHudTheme.PRIMARY,
-        )
+        VanillaInventoryPanel.draw(graphics, font, inventoryPanelX, inventoryTop)
         drawSets(graphics, mouseX, mouseY, panelX, panelY, panelWidth, inventoryTop)
         drawInventory(graphics, mouseX, mouseY, inventoryPanelX, inventoryTop)
         super.extractRenderState(graphics, mouseX, mouseY, delta)
@@ -411,11 +402,9 @@ class SetCollectionScreen(
         inventoryPanelX: Int,
         inventoryTop: Int,
     ) {
-        graphics.text(font, "INVENTORY", inventoryPanelX + inventorySidePadding, inventoryTop + 9, SkyHudTheme.TEXT_MUTED, false)
-
         val menu = backingMenu ?: return
         val startX = inventoryPanelX + inventorySidePadding
-        val mainY = inventoryTop + 22
+        val mainY = inventoryTop + VanillaInventoryPanel.MAIN_TOP
         val playerStart = menu.rowCount * 9
         val bounds = ArrayList<ItemSlotBounds>(36)
 
@@ -429,7 +418,7 @@ class SetCollectionScreen(
         repeat(9) { index ->
             val menuSlot = playerStart + 27 + index
             val x = startX + index * inventorySlotPitch
-            val y = mainY + 3 * inventorySlotPitch + 5
+            val y = mainY + 3 * inventorySlotPitch + VanillaInventoryPanel.HOTBAR_GAP
             drawInventorySlot(graphics, menu, menuSlot, x, y, mouseX, mouseY)
             bounds += ItemSlotBounds(menuSlot, x, y, inventorySlotSize)
         }
@@ -448,7 +437,10 @@ class SetCollectionScreen(
         val stack = menu.getSlot(menuSlot).item
         val hovered = mouseX in x until (x + inventorySlotSize) && mouseY in y until (y + inventorySlotSize)
         val inset = (inventorySlotSize - 16) / 2
-        slotRenderer.draw(graphics, stack, x + inset, y + inset, hovered, mouseX, mouseY, menuSlot)
+        slotRenderer.draw(
+            graphics, stack, x + inset, y + inset, hovered, mouseX, mouseY,
+            menuSlot, drawBackground = false,
+        )
         if (stack.isEmpty) return
         if (hovered) graphics.setTooltipForNextFrame(font, stack, mouseX, mouseY)
     }
@@ -646,7 +638,7 @@ class SetCollectionScreen(
 
     private fun inventoryTop(): Int = panelY() + panelHeight() - inventoryHeight + 3
 
-    private fun inventoryPanelWidth(): Int = 9 * inventorySlotPitch + 2 * inventorySidePadding
+    private fun inventoryPanelWidth(): Int = VanillaInventoryPanel.WIDTH
 
     private fun inventoryPanelX(): Int = (width - inventoryPanelWidth()) / 2
 
