@@ -76,6 +76,9 @@ code under `src/26.1.2` and `src/26.2`.
 - Commit mod work locally at natural checkpoints, such as after a coherent
   feature, fix, or refactor is complete and verified. Use clear conventional
   commit messages. Do not push unless the user explicitly asks.
+- Use `scripts/install-prism.ps1` for local Prism installs. Never overwrite an
+  installed JAR while Minecraft is running; wait for the game to close and use
+  the installer's verified, atomic replacement with a backup.
 - Before considering a mod change complete, run `./gradlew build` (or
   `.\gradlew.bat build` on Windows) and fix any failures. This must build every
   target in `gradle/targets.properties` and produce its JAR under

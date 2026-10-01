@@ -117,6 +117,19 @@ SkyHUD is behaviorally informed by established SkyBlock storage mods, but its
 UI, assets, and implementation are independent. It does not depend on SkyOcean
 or Firmament.
 
+On Windows, close Minecraft and install a built JAR into a Prism instance with:
+
+```powershell
+.\scripts\install-prism.ps1 -JarPath .\versions\mc26_2\build\libs\SkyHUD-1.0.10+mc26.2.jar -InstancePath 'C:\Users\you\AppData\Roaming\PrismLauncher\instances\Skyblock 26.2'
+```
+
+The installer refuses to update while a Minecraft JVM is running, verifies the
+JAR, and replaces it atomically with a backup. Replacing a loaded JAR in place
+can crash the game when it next loads an equipment or storage class.
+
+Run the installer's isolated regression checks against a built JAR with
+`scripts/tests/install-prism.test.ps1 -BuiltJar <path-to-built-jar>`.
+
 ## Embedded libraries
 
 SkyHUD uses SkyblockAPI as its profile-aware Ender Chest and backpack cache.
