@@ -2,6 +2,7 @@ package org.hypixelskyblockmods.skyhud.feature.loadouts
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.util.Util
 import net.minecraft.world.inventory.ChestMenu
 import net.minecraft.world.inventory.ContainerInput
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
@@ -22,8 +23,24 @@ object LoadoutController {
     private var deferredScreen: Screen? = null
     private var nativeEditFlowActive = false
     private val transition = OverlayMenuTransition("loadouts")
+    private val commandGuard = LoadoutCommandGuard()
 
-    fun shouldKeepSetMenusNative(): Boolean = nativeEditFlowActive
+    fun shouldKeepSetMenusNative(): Boolean = nativeEditFlowActive || commandGuard.shouldKeepNative(Util.getMillis())
+
+    fun onCommandSent(command: String) {
+        val now = Util.getMillis()
+        if (!commandGuard.onCommandSent(command, now)) return
+        if (!commandGuard.shouldKeepNative(now)) return
+        transition.clear(activeScreen)
+        activeScreen = null
+        currentTarget = null
+        pendingAction = null
+        pendingSearchHighlight = null
+        showOriginalNext = false
+        originalMenu = null
+        deferredScreen = null
+        nativeEditFlowActive = false
+    }
 
     fun redirectIncoming(client: Minecraft, screen: Screen): Screen {
         if (screen === activeScreen) return screen
@@ -49,7 +66,7 @@ object LoadoutController {
             currentTarget = null
             return false
         }
-        if (nativeEditFlowActive) {
+        if (nativeEditFlowActive || commandGuard.shouldKeepNative(Util.getMillis())) {
             originalMenu = target.menu
             activeScreen = null
             currentTarget = null
@@ -115,6 +132,7 @@ object LoadoutController {
         originalMenu = null
         deferredScreen = null
         nativeEditFlowActive = false
+        commandGuard.clear()
         LoadoutRepository.resetSession()
         if (closeContainer) client.player?.closeContainer()
         if (overlay != null && ScreenCompat.currentScreen() === overlay) ScreenCompat.setScreen(null)

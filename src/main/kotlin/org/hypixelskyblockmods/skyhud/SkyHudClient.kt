@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.minecraft.client.Minecraft
 import org.hypixelskyblockmods.skyhud.config.SkyHudConfigManager
@@ -27,6 +28,7 @@ object SkyHudClient : ClientModInitializer {
     override fun onInitializeClient() {
         SkyHudConfigManager.initialize()
         SkyblockApiIntegration.initialize()
+        ClientSendMessageEvents.COMMAND.register(LoadoutController::onCommandSent)
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
             dispatcher.register(
                 ClientCommands.literal("skyhud")
