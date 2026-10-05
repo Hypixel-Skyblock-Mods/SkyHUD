@@ -74,6 +74,7 @@ container layouts, and action items; unrelated chests are left untouched.
 
 - Minecraft 26.1.2 + Fabric
 - Minecraft 26.2 + Fabric
+- Minecraft 26.3 + Fabric
 
 SkyHUD requires Fabric Loader 0.19.3 or newer, Fabric API, Fabric Language
 Kotlin, and Java 25. The correct MoulConfig platform is bundled in each SkyHUD
@@ -136,3 +137,5 @@ SkyHUD uses SkyblockAPI as its profile-aware Ender Chest and backpack cache.
 SkyblockAPI is distributed under the MIT License; its complete license notice
 is packaged in every SkyHUD JAR at
 `META-INF/licenses/skyblock-api/LICENSE.txt`.
+
+Minecraft 26.3 builds bundle the official MoulConfig source port; see [THIRD_PARTY.md](THIRD_PARTY.md) for the pinned revision and JDK 8/25 build setup.

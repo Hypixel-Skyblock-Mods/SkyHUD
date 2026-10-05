@@ -1,9 +1,9 @@
 package org.hypixelskyblockmods.skyhud.gui
 
 import com.mojang.blaze3d.systems.RenderSystem
-import com.mojang.blaze3d.textures.FilterMode
-import com.mojang.blaze3d.textures.GpuTexture
-import com.mojang.blaze3d.textures.GpuTextureView
+import org.hypixelskyblockmods.skyhud.platform.FilterMode
+import org.hypixelskyblockmods.skyhud.platform.GpuTexture
+import org.hypixelskyblockmods.skyhud.platform.GpuTextureView
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import org.hypixelskyblockmods.skyhud.platform.RenderTargetCompat
 
@@ -100,25 +100,16 @@ object SkyHudBackdrop {
         }
 
         close()
-        val device = RenderSystem.getDevice()
-        val texture = device.createTexture(
-            { "SkyHUD backdrop snapshot" },
-            GpuTexture.USAGE_COPY_DST or GpuTexture.USAGE_TEXTURE_BINDING,
-            source.getFormat(),
-            source.getWidth(0),
-            source.getHeight(0),
-            1,
-            1,
-        )
+        val texture = RenderTargetCompat.createSnapshotTexture(source, "SkyHUD backdrop snapshot")
         snapshot = texture
-        snapshotView = device.createTextureView(texture)
+        snapshotView = RenderSystem.getDevice().createTextureView(texture)
         return snapshotView
     }
 
     private fun restoreRegion(
         graphics: GuiGraphicsExtractor,
         view: GpuTextureView,
-        sampler: com.mojang.blaze3d.textures.GpuSampler,
+        sampler: org.hypixelskyblockmods.skyhud.platform.GpuSampler,
         x0: Int,
         y0: Int,
         x1: Int,

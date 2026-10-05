@@ -4,8 +4,8 @@ SkyHUD is a client-side Kotlin/Fabric mod for Hypixel SkyBlock. It replaces the
 cramped Ender Chest, Loadouts, Wardrobe, and Equipment Sets inventory menus with
 cleaner searchable interfaces while preserving Hypixel's normal server-backed
 slot clicks, item handling, and vanilla fallback behavior. The project supports
-Minecraft 26.1.2 and 26.2 from shared sources plus version-specific compatibility
-code under `src/26.1.2` and `src/26.2`.
+Minecraft 26.1.2, 26.2 and 26.3 from shared sources plus version-specific compatibility
+code under `src/26.1.2`, `src/26.2` and `src/26.3`.
 
 ## Multi-version architecture
 

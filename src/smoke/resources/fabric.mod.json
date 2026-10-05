@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "skyhud_smoke",
+  "version": "1.0.0",
+  "name": "SkyHUD development linkage checks",
+  "environment": "client",
+  "entrypoints": {
+    "preLaunch": [
+      "org.hypixelskyblockmods.skyhud.smoke.FabricSmoke"
+    ]
+  },
+  "depends": {
+    "skyhud": "*"
+  }
+}
