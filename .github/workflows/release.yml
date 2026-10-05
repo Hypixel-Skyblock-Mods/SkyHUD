@@ -11,7 +11,8 @@ permissions:
 jobs:
   release:
     name: Push to Modrinth
-    runs-on: [self-hosted, Linux, X64, wicked-game-01, skyhud]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     environment: release
     env:
       MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
