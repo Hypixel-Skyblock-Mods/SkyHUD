@@ -24,6 +24,7 @@ object LoadoutController {
     private var nativeEditFlowActive = false
     private val transition = OverlayMenuTransition("loadouts")
     private val commandGuard = LoadoutCommandGuard()
+    private val pageLoadGuard = LoadoutPageLoadGuard()
 
     fun shouldKeepSetMenusNative(): Boolean = nativeEditFlowActive || commandGuard.shouldKeepNative(Util.getMillis())
 
@@ -32,6 +33,7 @@ object LoadoutController {
         if (!commandGuard.onCommandSent(command, now)) return
         if (!commandGuard.shouldKeepNative(now)) return
         transition.clear(activeScreen)
+        pageLoadGuard.clear()
         activeScreen = null
         currentTarget = null
         pendingAction = null
@@ -73,6 +75,7 @@ object LoadoutController {
             return false
         }
         if (transition.isRefreshing() && currentTarget?.menu === target.menu) return activeScreen != null
+        pageLoadGuard.clear()
         transition.onRecognized()
         LoadoutRepository.remember(target.page, target.menu)
         currentTarget = target
@@ -114,7 +117,14 @@ object LoadoutController {
         deferredScreen?.let { deferred ->
             if (onScreenOpened(client, deferred)) deferredScreen = null
         }
-        if (client.player?.containerMenu !== currentTarget?.menu) transition.scheduleRefresh()
+        val now = Util.getMillis()
+        // Opening a page and receiving its items are separate server updates.
+        // Keep the deferred screen until detection can validate those items.
+        if (pageLoadGuard.isWaiting(now)) transition.arm(overlay)
+        if (pageLoadGuard.shouldRefresh(client.player?.containerMenu !== currentTarget?.menu, now)) {
+            deferredScreen = null
+            transition.scheduleRefresh()
+        }
         transition.tick(client, overlay)
         if (transition.acceptsBackingUpdates()) overlay.refreshBackingMenu(client.player?.containerMenu)
     }
@@ -124,6 +134,7 @@ object LoadoutController {
         val overlay = activeScreen
         val closeContainer = overlay != null || currentTarget != null || originalMenu != null
         transition.clear(overlay)
+        pageLoadGuard.clear()
         activeScreen = null
         currentTarget = null
         pendingAction = null
@@ -141,6 +152,7 @@ object LoadoutController {
     private fun onOverlayClosed() {
         LoadoutRepository.flush()
         transition.clear(activeScreen)
+        pageLoadGuard.clear()
         activeScreen = null
         currentTarget = null
         pendingAction = null
@@ -151,10 +163,12 @@ object LoadoutController {
 
     private fun requestAction(page: Int, inventorySlot: Int?, action: LoadoutClickAction) {
         pendingAction = PendingAction(page, inventorySlot, action)
+        if (pageLoadGuard.isWaiting(Util.getMillis())) return
         if (!advancePendingAction()) transition.scheduleRefresh()
     }
 
     fun navigateToSearchResult(page: Int, loadoutId: Int) {
+        pageLoadGuard.clear()
         pendingSearchHighlight = PendingSearchHighlight(page, loadoutId)
         Minecraft.getInstance().player?.connection?.sendCommand("loadouts")
     }
@@ -171,6 +185,7 @@ object LoadoutController {
             return true
         }
         val navigationSlot = if (pending.page > target.page) 53 else 45
+        pageLoadGuard.begin(Util.getMillis())
         transition.arm(activeScreen)
         client.gameMode?.handleContainerInput(target.menu.containerId, navigationSlot, 0, ContainerInput.PICKUP, player)
         return true
@@ -206,6 +221,7 @@ object LoadoutController {
         }
 
         val navigationSlot = if (action.page > target.page) 53 else 45
+        pageLoadGuard.begin(Util.getMillis())
         transition.arm(activeScreen)
         client.gameMode?.handleContainerInput(
             target.menu.containerId,
@@ -218,6 +234,7 @@ object LoadoutController {
     }
 
     private fun openOriginal() {
+        pageLoadGuard.clear()
         showOriginalNext = true
         nativeEditFlowActive = true
         deferredScreen = null
