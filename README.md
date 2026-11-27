@@ -72,13 +72,12 @@ container layouts, and action items; unrelated chests are left untouched.
 
 ## Supported versions
 
-- Minecraft 26.1.2 + Fabric
 - Minecraft 26.2 + Fabric
 - Minecraft 26.3 + Fabric
 
-SkyHUD requires Fabric Loader 0.19.3 or newer, Fabric API, Fabric Language
+SkyHUD requires Fabric Loader 0.20.1 or newer, Fabric API, Fabric Language
 Kotlin, and Java 25. The correct MoulConfig platform is bundled in each SkyHUD
-JAR. [SkyblockAPI](https://github.com/SkyblockAPI/SkyblockAPI) 4.2.10 is also
+JAR. [SkyblockAPI](https://github.com/SkyblockAPI/SkyblockAPI) 4.3.3 is also
 embedded, together with its required runtime libraries, so players do not need
 to install SkyblockAPI or Hypixel Mod API separately.
 
@@ -110,8 +109,8 @@ Build both supported versions:
 The production JARs are written to:
 
 ```text
-versions/mc26_1_2/build/libs/SkyHUD-1.0.0+mc26.1.2.jar
-versions/mc26_2/build/libs/SkyHUD-1.0.0+mc26.2.jar
+versions/mc26_2/build/libs/SkyHUD-<mod_version>+mc26.2.jar
+versions/mc26_3/build/libs/SkyHUD-<mod_version>+mc26.3.jar
 ```
 
 SkyHUD is behaviorally informed by established SkyBlock storage mods, but its
